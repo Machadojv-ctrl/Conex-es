@@ -174,7 +174,7 @@
             <label class="label">Imagem ou vídeo</label>
             <input type="file" id="arquivo-midia" accept="image/*,video/*" onchange="enviarArquivo(this)">
             <div id="status-upload" style="font-size:12px; margin-top:6px; color:var(--cinza-500);"></div>
-            <input type="hidden" id="url-midia-enviada">
+            <input type="text" id="url-midia-enviada" readonly placeholder="a URL aparece aqui depois do envio" style="width:100%; border:1px solid var(--cinza-300); padding:8px 10px; font-size:12px; margin-top:8px; background:var(--cinza-50);" onclick="this.select()">
           </div>
           <div class="campo" id="campo-midia-carrossel" style="display:none;">
             <label class="label">Links do carrossel (2 a 10 itens)</label>
@@ -186,17 +186,17 @@
           </div>
           <div class="campo">
             <label class="label">Segmento</label>
-            <select><option>Olhar Crítico</option><option>Rolê no Centro</option><option>Memória do Centro</option><option>Direto ao Ponto</option><option>Voz da Comunidade</option></select>
+            <select id="segmento-post"><option>Olhar Crítico</option><option>Rolê no Centro</option><option>Memória do Centro</option><option>Direto ao Ponto</option><option>Voz da Comunidade</option></select>
           </div>
           <div class="campo">
             <label class="label">Legenda</label>
-            <textarea placeholder="Escreva a legenda, ou peça pra IA rascunhar ao lado →"></textarea>
+            <textarea id="legenda-post" placeholder="Escreva a legenda, ou peça pra IA rascunhar ao lado →"></textarea>
           </div>
           <div class="campo">
             <label class="label">Dia previsto</label>
-            <input type="text" placeholder="ex: sábado, 09/08">
+            <input type="text" id="dia-previsto-post" placeholder="ex: sábado, 09/08">
           </div>
-          <button class="btn primario">Enviar para a fila</button>
+          <button type="button" class="btn primario" id="btn-enviar-fila" onclick="enviarParaFila()">Enviar para a fila</button>
         </div>
 
         <div class="painel-ia">
@@ -454,6 +454,51 @@
 
 <script>
   const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwp_tqImNntndXqj35NhaP6KDqwU2knEeKnY3BzvpEq3oZZ4iHmD-qXXm70iHCpl6kE-g/exec';
+
+  function enviarParaFila() {
+    const tipo = document.getElementById('tipo-midia').value;
+    const segmento = document.getElementById('segmento-post').value;
+    const legenda = document.getElementById('legenda-post').value.trim();
+    const diaPrevisto = document.getElementById('dia-previsto-post').value.trim();
+
+    let midiaUrl;
+    if (tipo === 'carrossel') {
+      const links = Array.from(document.querySelectorAll('#lista-links-carrossel input')).map(i => i.value.trim()).filter(Boolean);
+      if (links.length < 2) { alert('Carrossel precisa de pelo menos 2 links preenchidos.'); return; }
+      midiaUrl = links.join('|');
+    } else {
+      midiaUrl = document.getElementById('url-midia-enviada').value.trim();
+      if (!midiaUrl) { alert('Suba uma imagem/vídeo antes de enviar.'); return; }
+    }
+    if (!legenda) { alert('Escreva uma legenda antes de enviar.'); return; }
+
+    const botao = document.getElementById('btn-enviar-fila');
+    botao.textContent = 'Publicando...';
+    botao.disabled = true;
+
+    fetch(WEBAPP_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        acao: 'criar_item_fila',
+        tipo: tipo,
+        segmento: segmento,
+        midiaUrl: midiaUrl,
+        legenda: legenda,
+        diaPrevisto: diaPrevisto,
+      }),
+    })
+      .then(r => r.json())
+      .then(dados => {
+        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Enviar para a fila'; botao.disabled = false; return; }
+        botao.textContent = dados.postId ? '✓ Publicado!' : '✓ Enviado (aguardando publicação)';
+        setTimeout(() => { botao.textContent = 'Enviar para a fila'; botao.disabled = false; }, 4000);
+      })
+      .catch(erro => {
+        alert('Erro ao enviar: ' + erro.message);
+        botao.textContent = 'Enviar para a fila';
+        botao.disabled = false;
+      });
+  }
 
   function enviarArquivo(input) {
     const arquivo = input.files[0];
