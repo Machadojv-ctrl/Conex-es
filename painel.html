@@ -519,6 +519,7 @@
       })
         .then(r => r.json())
         .then(dados => {
+          if (dados.erro) { statusEl.textContent = 'Erro do servidor: ' + dados.erro; statusEl.style.color = 'var(--vermelho)'; return; }
           document.getElementById('url-midia-enviada').value = dados.url;
           statusEl.textContent = '✓ Enviado: ' + arquivo.name;
           statusEl.style.color = 'var(--vermelho)';
