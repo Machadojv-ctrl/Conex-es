@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel Conexão Central</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /*
+    SISTEMA DE DESIGN — Conexão Central
+    Cores: preto #0A0A0A, branco #FFFFFF, vermelho #E4002B (única cor de destaque — usada com moderação)
+    Tipografia: Archivo (headlines, labels, dados) / IBM Plex Sans (corpo de texto)
+    Escala: 12 / 13 / 15 / 20 / 28px
+    Ritmo: grade de 8px. Cabeçalho de seção = label maiúscula + peso 700 + 0.04em tracking.
+    Sem gradiente, sem sombra decorativa, sem cartão com borda lateral colorida — hierarquia vem de tipografia e blocos de cor sólidos.
+  */
+  :root{
+    --preto:#0A0A0A; --branco:#FFFFFF; --vermelho:#E4002B;
+    --cinza-50:#F6F6F5; --cinza-100:#ECEBE9; --cinza-300:#D4D2CE; --cinza-500:#8C8A85; --cinza-700:#4A4844;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:'IBM Plex Sans',sans-serif; color:var(--preto); background:var(--branco); font-size:14px; line-height:1.45;}
+  .headline{font-family:'Archivo',sans-serif; font-weight:900;}
+  .label{font-family:'Archivo',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; font-size:11px;}
+
+  .app{display:grid; grid-template-columns:220px 1fr; min-height:100vh;}
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar{background:var(--preto); color:var(--branco); padding:24px 0; display:flex; flex-direction:column;}
+  .marca{padding:0 20px 28px; border-bottom:1px solid #2A2A2A;}
+  .marca .headline{font-size:18px; letter-spacing:-0.01em;}
+  .marca .sub{font-size:11px; color:var(--cinza-500); margin-top:2px;}
+  nav{margin-top:20px; display:flex; flex-direction:column;}
+  .nav-item{display:flex; align-items:center; justify-content:space-between; padding:11px 20px; color:#C9C7C2; cursor:pointer; font-size:13px; font-weight:500; border-left:3px solid transparent;}
+  .nav-item:hover{color:var(--branco);}
+  .nav-item.ativo{color:var(--branco); background:#171717; border-left:3px solid var(--vermelho);}
+  .nav-item .contagem{font-family:'Archivo',sans-serif; font-weight:700; font-size:11px; background:var(--vermelho); color:var(--branco); padding:1px 7px; border-radius:2px;}
+  .nav-item .contagem.zero{background:#2A2A2A; color:var(--cinza-500);}
+
+  /* ---------- MAIN ---------- */
+  main{padding:32px 40px 60px; max-width:1100px;}
+  .topo-secao{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:24px; padding-bottom:14px; border-bottom:2px solid var(--preto);}
+  .topo-secao h1{font-size:24px; letter-spacing:-0.01em;}
+  .topo-secao .contexto{font-size:12px; color:var(--cinza-700);}
+
+  .secao{display:none;}
+  .secao.ativa{display:block;}
+
+  /* ---------- FILA DE APROVAÇÃO ---------- */
+  .item-fila{display:grid; grid-template-columns:64px 1fr auto; gap:16px; align-items:center; padding:16px 0; border-bottom:1px solid var(--cinza-100);}
+  .thumb{width:64px; height:64px; background:var(--cinza-100); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--cinza-500); text-align:center;}
+  .tag-segmento{display:inline-block; background:var(--preto); color:var(--branco); font-family:'Archivo',sans-serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.03em; padding:3px 8px; margin-right:8px;}
+  .tag-status{display:inline-block; font-family:'Archivo',sans-serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.03em; padding:3px 8px;}
+  .tag-status.pendente{background:var(--vermelho); color:var(--branco);}
+  .tag-status.aprovado{background:var(--cinza-100); color:var(--preto); border:1px solid var(--preto);}
+  .titulo-item{font-size:15px; margin-top:6px; font-weight:500;}
+  .acoes{display:flex; gap:8px;}
+  .btn{font-family:'Archivo',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; padding:9px 16px; border:1px solid var(--preto); background:var(--branco); color:var(--preto); cursor:pointer;}
+  .btn.primario{background:var(--preto); color:var(--branco);}
+
+  /* ---------- CALENDÁRIO ---------- */
+  .semana{display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--cinza-300); border:1px solid var(--cinza-300);}
+  .dia{background:var(--branco); padding:14px 12px; min-height:120px;}
+  .dia .label{color:var(--cinza-500);}
+  .dia .segmento-nome{font-size:13px; font-weight:600; margin-top:10px;}
+  .dia.preenchido{background:var(--cinza-50);}
+  .dia.hoje{background:var(--preto); color:var(--branco);}
+  .dia.hoje .label{color:var(--cinza-300);}
+
+  /* ---------- INSIGHTS DE HORÁRIO ---------- */
+  .wrap-insights{overflow-x:auto; max-width:100%;}
+  .grade-insights{display:grid; grid-template-columns:90px repeat(12,64px); gap:1px; background:var(--cinza-300); border:1px solid var(--cinza-300); width:max-content;}
+  .grade-insights .celula{background:var(--branco); padding:10px 4px; font-size:11px; text-align:center;}
+  .grade-insights .cabecalho{background:var(--preto); color:var(--branco); font-family:'Archivo',sans-serif; font-weight:700; font-size:10px;}
+  .grade-insights .rotulo{background:var(--cinza-50); font-weight:600; text-align:left; padding-left:10px; font-size:12px;}
+  .aviso{font-size:12px; color:var(--cinza-700); margin-top:14px; padding:12px 14px; background:var(--cinza-50); border-left:2px solid var(--preto);}
+
+  /* ---------- COMENTÁRIOS ESCALADOS ---------- */
+  .comentario{padding:16px 0; border-bottom:1px solid var(--cinza-100);}
+  .comentario .quem{font-weight:600; font-size:13px;}
+  .comentario .texto{font-size:14px; margin:6px 0 8px; color:var(--preto);}
+  .comentario .motivo{font-size:11px; color:var(--vermelho); font-weight:600; text-transform:uppercase; letter-spacing:0.02em;}
+
+  /* ---------- CRIAR POST ---------- */
+  .compor{display:grid; grid-template-columns:1fr 320px; gap:32px; align-items:start;}
+  .campo{margin-bottom:18px;}
+  .campo .label{display:block; margin-bottom:6px; color:var(--cinza-700);}
+  .campo input, .campo select, .campo textarea{width:100%; border:1px solid var(--cinza-300); padding:10px 12px; font-family:'IBM Plex Sans',sans-serif; font-size:14px; background:var(--branco);}
+  .campo textarea{min-height:110px; resize:vertical;}
+  .painel-ia{background:var(--preto); color:var(--branco); padding:20px;}
+  .painel-ia .tag-ia{display:inline-block; background:var(--vermelho); font-family:'Archivo',sans-serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.03em; padding:3px 8px; margin-bottom:12px;}
+  .painel-ia textarea{width:100%; background:#171717; border:1px solid #2A2A2A; color:var(--branco); padding:10px; font-family:'IBM Plex Sans',sans-serif; font-size:13px; min-height:60px; margin-bottom:10px;}
+  .painel-ia .rascunho{background:#171717; border:1px solid #2A2A2A; padding:12px; font-size:13px; margin-top:14px; line-height:1.5;}
+  .btn-branco{font-family:'Archivo',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; padding:9px 16px; border:1px solid var(--branco); background:transparent; color:var(--branco); cursor:pointer; width:100%;}
+
+  /* ---------- COMENTÁRIOS (completo) ---------- */
+  .comentario{padding:18px 0; border-bottom:1px solid var(--cinza-100);}
+  .comentario .linha-topo{display:flex; align-items:center; gap:10px;}
+  .comentario .quem{font-weight:600; font-size:13px;}
+  .comentario .texto{font-size:14px; margin:8px 0 10px; color:var(--preto);}
+  .tag-estado{font-family:'Archivo',sans-serif; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:0.03em; padding:3px 8px;}
+  .tag-estado.escalado{background:var(--vermelho); color:var(--branco);}
+  .tag-estado.rascunho{background:var(--cinza-100); color:var(--preto); border:1px solid var(--preto);}
+  .tag-estado.resolvido{background:var(--cinza-50); color:var(--cinza-500);}
+  .resposta-ia{background:var(--cinza-50); border-left:2px solid var(--preto); padding:10px 12px; font-size:13px; margin-top:8px;}
+  .resposta-ia .rotulo-ia{font-family:'Archivo',sans-serif; font-weight:700; font-size:10px; color:var(--cinza-700); text-transform:uppercase; margin-bottom:4px;}
+
+  /* ---------- CONTEXTO & IA ---------- */
+  .contexto-grid{display:grid; grid-template-columns:1fr 300px; gap:32px;}
+  .chat{border:1px solid var(--cinza-300); display:flex; flex-direction:column; height:480px;}
+  .chat-corpo{flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:14px;}
+  .msg{max-width:80%; padding:10px 14px; font-size:13px; line-height:1.5;}
+  .msg.eu{align-self:flex-end; background:var(--preto); color:var(--branco);}
+  .msg.ia{align-self:flex-start; background:var(--cinza-50);}
+  .chat-input{display:flex; border-top:1px solid var(--cinza-300);}
+  .chat-input input{flex:1; border:none; padding:14px; font-size:14px;}
+  .chat-input button{background:var(--vermelho); color:var(--branco); border:none; padding:0 20px; font-family:'Archivo',sans-serif; font-weight:700; text-transform:uppercase; font-size:11px; cursor:pointer;}
+  .doc-item{padding:12px; border:1px solid var(--cinza-300); margin-bottom:8px; font-size:13px;}
+  .doc-item .nome{font-weight:600;}
+  .doc-item .meta{font-size:11px; color:var(--cinza-500); margin-top:2px;}
+
+  /* ---------- RANKING DE POSTS ---------- */
+  .ranking-item{display:grid; grid-template-columns:32px 1fr auto; gap:14px; align-items:center; padding:12px 0; border-bottom:1px solid var(--cinza-100);}
+  .ranking-pos{font-family:'Archivo',sans-serif; font-weight:900; font-size:18px; color:var(--vermelho);}
+  .ranking-titulo{font-size:13px; font-weight:500;}
+  .ranking-meta{font-size:11px; color:var(--cinza-500); margin-top:2px;}
+  .ranking-num{font-family:'Archivo',sans-serif; font-weight:700; font-size:13px; text-align:right;}
+
+  /* ---------- RADAR DE CONTEÚDO ---------- */
+  .grade-radar{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--cinza-300); border:1px solid var(--cinza-300);}
+  .conta-ref{background:var(--branco); padding:16px;}
+  .conta-ref .handle{font-weight:700; font-size:13px;}
+  .conta-ref .cat{font-size:11px; color:var(--cinza-500); text-transform:uppercase; letter-spacing:0.02em; margin-top:2px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="marca">
+      <div class="headline">CONEXÃO CENTRAL</div>
+      <div class="sub">painel de operação</div>
+    </div>
+    <nav>
+      <div class="nav-item ativo" data-secao="fila">Fila de aprovação <span class="contagem">3</span></div>
+      <div class="nav-item" data-secao="criar">Criar post</div>
+      <div class="nav-item" data-secao="calendario">Calendário editorial <span class="contagem zero">·</span></div>
+      <div class="nav-item" data-secao="insights">Insights <span class="contagem zero">·</span></div>
+      <div class="nav-item" data-secao="comentarios">Comentários <span class="contagem">5</span></div>
+      <div class="nav-item" data-secao="contexto">Contexto & IA</div>
+      <div class="nav-item" data-secao="radar">Radar de conteúdo <span class="contagem zero">·</span></div>
+    </nav>
+  </aside>
+
+  <main>
+
+    <section class="secao" id="secao-criar">
+      <div class="topo-secao">
+        <h1 class="headline">Criar post</h1>
+        <span class="contexto">novo item para a fila</span>
+      </div>
+      <div class="compor">
+        <div>
+          <div class="campo">
+            <label class="label">Tipo de mídia</label>
+            <select id="tipo-midia" onchange="alternarCampoMidia()">
+              <option value="foto">Foto</option>
+              <option value="video">Vídeo / Reels</option>
+              <option value="carrossel">Carrossel</option>
+            </select>
+          </div>
+          <div class="campo" id="campo-midia-unica">
+            <label class="label">Imagem ou vídeo</label>
+            <input type="file" id="arquivo-midia" accept="image/*,video/*" onchange="enviarArquivo(this)">
+            <div id="status-upload" style="font-size:12px; margin-top:6px; color:var(--cinza-500);"></div>
+            <input type="hidden" id="url-midia-enviada">
+          </div>
+          <div class="campo" id="campo-midia-carrossel" style="display:none;">
+            <label class="label">Links do carrossel (2 a 10 itens)</label>
+            <div id="lista-links-carrossel">
+              <input type="text" placeholder="https://... (item 1)" style="margin-bottom:8px;">
+              <input type="text" placeholder="https://... (item 2)" style="margin-bottom:8px;">
+            </div>
+            <button type="button" class="btn" onclick="adicionarLinkCarrossel()">+ Adicionar imagem</button>
+          </div>
+          <div class="campo">
+            <label class="label">Segmento</label>
+            <select><option>Olhar Crítico</option><option>Rolê no Centro</option><option>Memória do Centro</option><option>Direto ao Ponto</option><option>Voz da Comunidade</option></select>
+          </div>
+          <div class="campo">
+            <label class="label">Legenda</label>
+            <textarea placeholder="Escreva a legenda, ou peça pra IA rascunhar ao lado →"></textarea>
+          </div>
+          <div class="campo">
+            <label class="label">Dia previsto</label>
+            <input type="text" placeholder="ex: sábado, 09/08">
+          </div>
+          <button class="btn primario">Enviar para a fila</button>
+        </div>
+
+        <div class="painel-ia">
+          <span class="tag-ia">Assistente IA</span>
+          <div style="font-size:13px; margin-bottom:12px; color:#C9C7C2;">Descreva o que aconteceu, a IA rascunha a legenda no estilo do Conexão Central.</div>
+          <textarea placeholder="ex: obra na Praça da República parada há 4 meses, moradores reclamando de buraco na calçada..."></textarea>
+          <button class="btn-branco">Gerar rascunho</button>
+          <div class="rascunho">
+            <strong>Sugestão:</strong><br>
+            "🚧 A obra na Praça da República já leva 4 meses parada — e o buraco na calçada segue sem solução. Quem passa por ali todo dia sabe o risco. E aí, alguém da subprefeitura vai aparecer?"
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao ativa" id="secao-fila">
+      <div class="topo-secao">
+        <h1 class="headline">Fila de aprovação</h1>
+        <span class="contexto">3 itens aguardando · atualizado agora</span>
+      </div>
+
+      <div class="item-fila">
+        <div class="thumb">[foto]</div>
+        <div>
+          <span class="tag-segmento">Olhar crítico</span><span class="tag-status pendente">Pendente</span>
+          <div class="titulo-item">Obra da Praça da República parada há 4 meses</div>
+        </div>
+        <div class="acoes"><button class="btn">Editar</button><button class="btn primario">Aprovar</button></div>
+      </div>
+
+      <div class="item-fila">
+        <div class="thumb">[foto]</div>
+        <div>
+          <span class="tag-segmento">Rolê no Centro</span><span class="tag-status pendente">Pendente</span>
+          <div class="titulo-item">Agenda cultural gratuita da semana</div>
+        </div>
+        <div class="acoes"><button class="btn">Editar</button><button class="btn primario">Aprovar</button></div>
+      </div>
+
+      <div class="item-fila">
+        <div class="thumb">[vídeo]</div>
+        <div>
+          <span class="tag-segmento">Direto ao ponto</span><span class="tag-status aprovado">Aprovado</span>
+          <div class="titulo-item">O que é IPTU progressivo, explicado em 40 segundos</div>
+        </div>
+        <div class="acoes"><button class="btn">Editar</button><button class="btn" disabled>Publica em ~8min</button></div>
+      </div>
+    </section>
+
+    <section class="secao" id="secao-calendario">
+      <div class="topo-secao">
+        <h1 class="headline">Calendário editorial</h1>
+        <span class="contexto">semana de 03 a 09 de agosto</span>
+      </div>
+      <div class="semana">
+        <div class="dia preenchido"><div class="label">Seg</div><div class="segmento-nome">Agenda da Semana</div></div>
+        <div class="dia hoje"><div class="label">Ter</div><div class="segmento-nome">Olhar Crítico</div></div>
+        <div class="dia"><div class="label">Qua</div><div class="segmento-nome">Memória do Centro</div></div>
+        <div class="dia preenchido"><div class="label">Qui</div><div class="segmento-nome">Direto ao Ponto</div></div>
+        <div class="dia"><div class="label">Sex</div><div class="segmento-nome">Voz da Comunidade</div></div>
+        <div class="dia"><div class="label">Sáb</div><div class="segmento-nome">Rolê no Centro</div></div>
+        <div class="dia"><div class="label">Dom</div><div class="segmento-nome">Resumo & Enquete</div></div>
+      </div>
+    </section>
+
+    <section class="secao" id="secao-insights">
+      <div class="topo-secao">
+        <h1 class="headline">Insights de horário</h1>
+        <span class="contexto">média de alcance por dia · período</span>
+      </div>
+      <div class="wrap-insights">
+        <div class="grade-insights">
+          <div class="celula cabecalho"></div>
+          <div class="celula cabecalho">00–02</div>
+          <div class="celula cabecalho">02–04</div>
+          <div class="celula cabecalho">04–06</div>
+          <div class="celula cabecalho">06–08</div>
+          <div class="celula cabecalho">08–10</div>
+          <div class="celula cabecalho">10–12</div>
+          <div class="celula cabecalho">12–14</div>
+          <div class="celula cabecalho">14–16</div>
+          <div class="celula cabecalho">16–18</div>
+          <div class="celula cabecalho">18–20</div>
+          <div class="celula cabecalho">20–22</div>
+          <div class="celula cabecalho">22–24</div>
+
+          <div class="celula rotulo">Segunda</div>
+          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
+
+          <div class="celula rotulo">Terça</div>
+          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
+
+          <div class="celula rotulo">Quarta</div>
+          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
+
+          <div class="celula rotulo">Quinta</div>
+          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
+
+          <div class="celula rotulo">Sexta</div>
+          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
+
+          <div class="celula rotulo">Sábado</div>
+          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
+
+          <div class="celula rotulo">Domingo</div>
+          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
+        </div>
+      </div>
+      <div class="aviso">Ainda sem dados suficientes — a tabela preenche sozinha conforme mais posts forem coletados pela automação. Cada célula vira mais escura (mais vermelha) quanto maior o alcance médio naquele bloco de horário.</div>
+
+      <div class="topo-secao" style="margin-top:36px;">
+        <h1 class="headline" style="font-size:18px;">Ranking — desempenho na primeira hora</h1>
+      </div>
+      <div class="ranking-item">
+        <div class="ranking-pos">1</div>
+        <div><div class="ranking-titulo">Obra parada na Praça da República</div><div class="ranking-meta">Olhar Crítico · terça, 18h</div></div>
+        <div class="ranking-num">—</div>
+      </div>
+      <div class="ranking-item">
+        <div class="ranking-pos">2</div>
+        <div><div class="ranking-titulo">Agenda cultural gratuita da semana</div><div class="ranking-meta">Rolê no Centro · sábado, 09h</div></div>
+        <div class="ranking-num">—</div>
+      </div>
+      <div class="ranking-item">
+        <div class="ranking-pos">3</div>
+        <div><div class="ranking-titulo">O que é IPTU progressivo</div><div class="ranking-meta">Direto ao Ponto · quinta, 12h</div></div>
+        <div class="ranking-num">—</div>
+      </div>
+      <div id="ranking-resto" style="display:none;">
+        <div class="ranking-item">
+          <div class="ranking-pos">4</div>
+          <div><div class="ranking-titulo">Memória: Praça da Luz nos anos 80</div><div class="ranking-meta">Memória do Centro · quarta, 15h</div></div>
+          <div class="ranking-num">—</div>
+        </div>
+        <div class="ranking-item">
+          <div class="ranking-pos">5</div>
+          <div><div class="ranking-titulo">Depoimento: 20 anos de comércio na Ifigênia</div><div class="ranking-meta">Voz da Comunidade · sexta, 17h</div></div>
+          <div class="ranking-num">—</div>
+        </div>
+      </div>
+      <button class="btn" style="margin-top:12px;" onclick="alternarRankingCompleto(this)">Ver lista completa</button>
+
+      <div class="topo-secao" style="margin-top:36px;">
+        <h1 class="headline" style="font-size:18px;">Saúde da automação de comentário</h1>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--cinza-300); border:1px solid var(--cinza-300); max-width:640px;">
+        <div style="background:var(--branco); padding:16px;"><div class="label" style="color:var(--cinza-500);">Respondido pela IA</div><div class="headline" style="font-size:26px; margin-top:6px;">—</div></div>
+        <div style="background:var(--branco); padding:16px;"><div class="label" style="color:var(--cinza-500);">Escalado pra você</div><div class="headline" style="font-size:26px; margin-top:6px;">—</div></div>
+        <div style="background:var(--branco); padding:16px;"><div class="label" style="color:var(--cinza-500);">Avaliado como ruim</div><div class="headline" style="font-size:26px; margin-top:6px; color:var(--vermelho);">—</div></div>
+      </div>
+      <div class="aviso">Última coluna sobe quando você marca uma resposta da IA como "ruim" — é o sinal de que vale revisar as instruções em Contexto & IA.</div>
+
+      <div class="topo-secao" style="margin-top:36px;">
+        <h1 class="headline" style="font-size:18px;">Crescimento de seguidores</h1>
+      </div>
+      <div class="aviso">Gráfico de linha com o histórico de seguidores captado a cada 15 minutos — aparece assim que houver pontos suficientes pra desenhar uma curva.</div>
+    </section>
+
+    <section class="secao" id="secao-comentarios">
+      <div class="topo-secao">
+        <h1 class="headline">Comentários</h1>
+        <span class="contexto">5 no total · 2 aguardando você</span>
+      </div>
+
+      <div class="comentario">
+        <div class="linha-topo"><span class="quem">@morador_centro_sp</span><span class="tag-estado escalado">Escalado</span></div>
+        <div class="texto">"Isso é culpa de quem mesmo? Vocês nunca falam quem que devia resolver."</div>
+        <textarea placeholder="Escrever resposta manualmente..." style="width:100%; border:1px solid var(--cinza-300); padding:10px; font-size:13px; min-height:50px; margin-bottom:8px;"></textarea>
+        <div class="acoes"><button class="btn">Pedir sugestão à IA</button><button class="btn primario">Enviar resposta</button></div>
+      </div>
+
+      <div class="comentario">
+        <div class="linha-topo"><span class="quem">@ze_da_luz</span><span class="tag-estado escalado">Escalado</span></div>
+        <div class="texto">"Alguém sabe se essa obra tem prazo pra terminar de verdade?"</div>
+        <div class="resposta-ia">
+          <div class="rotulo-ia">Rascunho da IA — revisar antes de enviar</div>
+          Ainda não temos prazo oficial confirmado pela subprefeitura — assim que sair, publicamos aqui. Se você tiver alguma info, manda no direct 👀
+        </div>
+        <div class="acoes" style="margin-top:10px;"><button class="btn">Editar</button><button class="btn primario">Aprovar e enviar</button></div>
+      </div>
+
+      <div class="comentario">
+        <div class="linha-topo"><span class="quem">@ana.centro</span><span class="tag-estado rascunho">Rascunho pronto</span></div>
+        <div class="texto">"Que dia é o próximo Rolê no Centro?"</div>
+        <div class="resposta-ia">
+          <div class="rotulo-ia">Rascunho da IA — revisar antes de enviar</div>
+          Esse sábado! Posta aqui o roteiro completo até sexta 🙌
+        </div>
+        <div class="acoes" style="margin-top:10px;"><button class="btn">Editar</button><button class="btn primario">Aprovar e enviar</button></div>
+      </div>
+
+      <div class="comentario">
+        <div class="linha-topo"><span class="quem">@paulista_raiz</span><span class="tag-estado resolvido">Respondido pela IA</span></div>
+        <div class="texto">"Que horas abre a Pinacoteca amanhã?"</div>
+        <div class="resposta-ia" style="border-left-color:var(--cinza-300);">Abre 10h, entrada gratuita aos sábados 😉</div>
+      </div>
+
+      <div class="comentario">
+        <div class="linha-topo"><span class="quem">@rita_bomretiro</span><span class="tag-estado resolvido">Respondido pela IA</span></div>
+        <div class="texto">"Amei a matéria, muito bom ver isso sendo cobrado 👏"</div>
+        <div class="resposta-ia" style="border-left-color:var(--cinza-300);">Muito obrigado pelo apoio! É pra isso que a gente tá aqui 🙏</div>
+      </div>
+    </section>
+
+    <section class="secao" id="secao-contexto">
+      <div class="topo-secao">
+        <h1 class="headline">Contexto & IA</h1>
+        <span class="contexto">converse e ajuste como a IA entende o Conexão Central</span>
+      </div>
+      <div class="contexto-grid">
+        <div class="chat">
+          <div class="chat-corpo">
+            <div class="msg ia">Oi! Posso ajudar a ajustar tom de resposta, revisar exemplos, ou você pode subir um documento de referência editorial ao lado.</div>
+            <div class="msg eu">A partir de agora, nunca use ponto de exclamação duplo em legenda.</div>
+            <div class="msg ia">Entendido — adicionei essa regra na aba de instruções. Vale também pra resposta de comentário, ou só posts?</div>
+          </div>
+          <div class="chat-input">
+            <input type="text" placeholder="Escreva uma instrução ou pergunta...">
+            <button>Enviar</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="label" style="margin-bottom:10px;">Documentos de contexto</div>
+          <div class="doc-item">
+            <div class="nome">Linha editorial — esquerda sem bandeira.md</div>
+            <div class="meta">enviado há 2 semanas</div>
+          </div>
+          <div class="doc-item">
+            <div class="nome">Exemplos de resposta aprovados.csv</div>
+            <div class="meta">enviado há 3 dias</div>
+          </div>
+          <button class="btn" style="width:100%; margin-top:8px;">+ Subir documento</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao" id="secao-radar">
+      <div class="topo-secao">
+        <h1 class="headline">Radar de conteúdo</h1>
+        <span class="contexto">contas de referência acompanhadas</span>
+      </div>
+      <div class="grade-radar">
+        <div class="conta-ref"><div class="handle">@pinacotecasp</div><div class="cat">Instituição cultural</div></div>
+        <div class="conta-ref"><div class="handle">@sesc24demaio</div><div class="cat">Instituição cultural</div></div>
+        <div class="conta-ref"><div class="handle">@conexaojabaquara</div><div class="cat">Rede Conexão</div></div>
+        <div class="conta-ref"><div class="handle">@portalsantaceciliasp</div><div class="cat">Página de bairro</div></div>
+        <div class="conta-ref"><div class="handle">@_casadopovo</div><div class="cat">Instituição cultural</div></div>
+        <div class="conta-ref"><div class="handle">@bomretiro.sp</div><div class="cat">Página de bairro</div></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwp_tqImNntndXqj35NhaP6KDqwU2knEeKnY3BzvpEq3oZZ4iHmD-qXXm70iHCpl6kE-g/exec';
+
+  function enviarArquivo(input) {
+    const arquivo = input.files[0];
+    if (!arquivo) return;
+    const statusEl = document.getElementById('status-upload');
+    statusEl.textContent = 'Enviando...';
+
+    const leitor = new FileReader();
+    leitor.onload = function () {
+      const base64 = leitor.result.split(',')[1];
+      fetch(WEBAPP_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          imagemBase64: base64,
+          nomeArquivo: arquivo.name,
+          tipoMime: arquivo.type,
+        }),
+      })
+        .then(r => r.json())
+        .then(dados => {
+          document.getElementById('url-midia-enviada').value = dados.url;
+          statusEl.textContent = '✓ Enviado: ' + arquivo.name;
+          statusEl.style.color = 'var(--vermelho)';
+        })
+        .catch(erro => {
+          statusEl.textContent = 'Erro ao enviar: ' + erro.message;
+        });
+    };
+    leitor.readAsDataURL(arquivo);
+  }
+
+  function alternarCampoMidia() {
+    const tipo = document.getElementById('tipo-midia').value;
+    document.getElementById('campo-midia-unica').style.display = (tipo === 'carrossel') ? 'none' : 'block';
+    document.getElementById('campo-midia-carrossel').style.display = (tipo === 'carrossel') ? 'block' : 'none';
+  }
+  function adicionarLinkCarrossel() {
+    const lista = document.getElementById('lista-links-carrossel');
+    if (lista.children.length >= 10) { alert('Máximo de 10 itens por carrossel.'); return; }
+    const novo = document.createElement('input');
+    novo.type = 'text';
+    novo.placeholder = 'https://... (item ' + (lista.children.length + 1) + ')';
+    novo.style.marginBottom = '8px';
+    lista.appendChild(novo);
+  }
+  function alternarRankingCompleto(botao) {
+    const resto = document.getElementById('ranking-resto');
+    const mostrando = resto.style.display === 'block';
+    resto.style.display = mostrando ? 'none' : 'block';
+    botao.textContent = mostrando ? 'Ver lista completa' : 'Ver menos';
+  }
+</script>
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('ativo'));
+      document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+      item.classList.add('ativo');
+      document.getElementById('secao-' + item.dataset.secao).classList.add('ativa');
+    });
+  });
+</script>
+
+</body>
+</html>
