@@ -354,46 +354,11 @@
     <section class="secao" id="secao-comentarios">
       <div class="topo-secao">
         <h1 class="headline">Comentários</h1>
-        <span class="contexto">5 no total · 2 aguardando você</span>
+        <span class="contexto" id="contexto-comentarios">carregando...</span>
       </div>
 
-      <div class="comentario">
-        <div class="linha-topo"><span class="quem">@morador_centro_sp</span><span class="tag-estado escalado">Escalado</span></div>
-        <div class="texto">"Isso é culpa de quem mesmo? Vocês nunca falam quem que devia resolver."</div>
-        <textarea placeholder="Escrever resposta manualmente..." style="width:100%; border:1px solid var(--cinza-300); padding:10px; font-size:13px; min-height:50px; margin-bottom:8px;"></textarea>
-        <div class="acoes"><button class="btn">Pedir sugestão à IA</button><button class="btn primario">Enviar resposta</button></div>
-      </div>
-
-      <div class="comentario">
-        <div class="linha-topo"><span class="quem">@ze_da_luz</span><span class="tag-estado escalado">Escalado</span></div>
-        <div class="texto">"Alguém sabe se essa obra tem prazo pra terminar de verdade?"</div>
-        <div class="resposta-ia">
-          <div class="rotulo-ia">Rascunho da IA — revisar antes de enviar</div>
-          Ainda não temos prazo oficial confirmado pela subprefeitura — assim que sair, publicamos aqui. Se você tiver alguma info, manda no direct 👀
-        </div>
-        <div class="acoes" style="margin-top:10px;"><button class="btn">Editar</button><button class="btn primario">Aprovar e enviar</button></div>
-      </div>
-
-      <div class="comentario">
-        <div class="linha-topo"><span class="quem">@ana.centro</span><span class="tag-estado rascunho">Rascunho pronto</span></div>
-        <div class="texto">"Que dia é o próximo Rolê no Centro?"</div>
-        <div class="resposta-ia">
-          <div class="rotulo-ia">Rascunho da IA — revisar antes de enviar</div>
-          Esse sábado! Posta aqui o roteiro completo até sexta 🙌
-        </div>
-        <div class="acoes" style="margin-top:10px;"><button class="btn">Editar</button><button class="btn primario">Aprovar e enviar</button></div>
-      </div>
-
-      <div class="comentario">
-        <div class="linha-topo"><span class="quem">@paulista_raiz</span><span class="tag-estado resolvido">Respondido pela IA</span></div>
-        <div class="texto">"Que horas abre a Pinacoteca amanhã?"</div>
-        <div class="resposta-ia" style="border-left-color:var(--cinza-300);">Abre 10h, entrada gratuita aos sábados 😉</div>
-      </div>
-
-      <div class="comentario">
-        <div class="linha-topo"><span class="quem">@rita_bomretiro</span><span class="tag-estado resolvido">Respondido pela IA</span></div>
-        <div class="texto">"Amei a matéria, muito bom ver isso sendo cobrado 👏"</div>
-        <div class="resposta-ia" style="border-left-color:var(--cinza-300);">Muito obrigado pelo apoio! É pra isso que a gente tá aqui 🙏</div>
+      <div id="lista-comentarios">
+        <p style="color:var(--cinza-500); font-size:13px;">Carregando comentários da planilha...</p>
       </div>
     </section>
 
@@ -508,6 +473,72 @@
       .catch(erro => {
         alert('Erro ao aprovar: ' + erro.message);
         botao.textContent = 'Aprovar e publicar';
+        botao.disabled = false;
+      });
+  }
+
+  function carregarComentarios() {
+    const lista = document.getElementById('lista-comentarios');
+    const contexto = document.getElementById('contexto-comentarios');
+    lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Carregando comentários da planilha...</p>';
+
+    fetch(WEBAPP_URL + '?acao=listar_comentarios')
+      .then(r => r.json())
+      .then(dados => {
+        const itens = dados.itens || [];
+        const escalados = itens.filter(i => i.acao === 'escalado').length;
+        contexto.textContent = itens.length + ' no total · ' + escalados + ' aguardando você';
+        document.querySelector('.nav-item[data-secao="comentarios"] .contagem').textContent = escalados || '·';
+
+        if (!itens.length) {
+          lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Nenhum comentário coletado ainda — o motor roda a cada 10 minutos automaticamente.</p>';
+          return;
+        }
+
+        lista.innerHTML = itens.map(item => {
+          const textoEscapado = (item.texto || '').replace(/"/g, '&quot;');
+
+          if (item.acao === 'escalado') {
+            return '<div class="comentario">'
+              + '<div class="linha-topo"><span class="quem">@' + item.autor + '</span><span class="tag-estado escalado">Escalado</span></div>'
+              + '<div class="texto">"' + textoEscapado + '"</div>'
+              + '<textarea id="resposta-' + item.linha + '" placeholder="Escrever resposta..." style="width:100%; border:1px solid var(--cinza-300); padding:10px; font-size:13px; min-height:50px; margin-bottom:8px;"></textarea>'
+              + '<div class="acoes"><button class="btn primario" onclick="enviarRespostaManual(' + item.linha + ', this)">Enviar resposta</button></div>'
+              + '</div>';
+          }
+
+          const rotulo = item.respondidoPor === 'ia' ? 'Respondido pela IA' : 'Respondido';
+          return '<div class="comentario">'
+            + '<div class="linha-topo"><span class="quem">@' + item.autor + '</span><span class="tag-estado resolvido">' + rotulo + '</span></div>'
+            + '<div class="texto">"' + textoEscapado + '"</div>'
+            + '<div class="resposta-ia" style="border-left-color:var(--cinza-300);">' + (item.resposta || '') + '</div>'
+            + '</div>';
+        }).join('');
+      })
+      .catch(erro => {
+        lista.innerHTML = '<p style="color:var(--vermelho); font-size:13px;">Erro ao carregar: ' + erro.message + '</p>';
+      });
+  }
+
+  function enviarRespostaManual(linha, botao) {
+    const mensagem = document.getElementById('resposta-' + linha).value.trim();
+    if (!mensagem) { alert('Escreva uma resposta antes de enviar.'); return; }
+
+    botao.textContent = 'Enviando...';
+    botao.disabled = true;
+
+    fetch(WEBAPP_URL, {
+      method: 'POST',
+      body: JSON.stringify({ acao: 'responder_comentario_manual', linha: linha, mensagem: mensagem }),
+    })
+      .then(r => r.json())
+      .then(dados => {
+        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Enviar resposta'; botao.disabled = false; return; }
+        carregarComentarios();
+      })
+      .catch(erro => {
+        alert('Erro ao enviar: ' + erro.message);
+        botao.textContent = 'Enviar resposta';
         botao.disabled = false;
       });
   }
@@ -636,6 +667,7 @@
       item.classList.add('ativo');
       document.getElementById('secao-' + item.dataset.secao).classList.add('ativa');
       if (item.dataset.secao === 'fila') carregarFila();
+      if (item.dataset.secao === 'comentarios') carregarComentarios();
     });
   });
 
