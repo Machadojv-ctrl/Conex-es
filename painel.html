@@ -233,34 +233,11 @@
     <section class="secao ativa" id="secao-fila">
       <div class="topo-secao">
         <h1 class="headline">Fila de aprovação</h1>
-        <span class="contexto">3 itens aguardando · atualizado agora</span>
+        <span class="contexto" id="contexto-fila">carregando...</span>
       </div>
 
-      <div class="item-fila">
-        <div class="thumb">[foto]</div>
-        <div>
-          <span class="tag-segmento">Olhar crítico</span><span class="tag-status pendente">Pendente</span>
-          <div class="titulo-item">Obra da Praça da República parada há 4 meses</div>
-        </div>
-        <div class="acoes"><button class="btn">Editar</button><button class="btn primario">Aprovar</button></div>
-      </div>
-
-      <div class="item-fila">
-        <div class="thumb">[foto]</div>
-        <div>
-          <span class="tag-segmento">Rolê no Centro</span><span class="tag-status pendente">Pendente</span>
-          <div class="titulo-item">Agenda cultural gratuita da semana</div>
-        </div>
-        <div class="acoes"><button class="btn">Editar</button><button class="btn primario">Aprovar</button></div>
-      </div>
-
-      <div class="item-fila">
-        <div class="thumb">[vídeo]</div>
-        <div>
-          <span class="tag-segmento">Direto ao ponto</span><span class="tag-status aprovado">Aprovado</span>
-          <div class="titulo-item">O que é IPTU progressivo, explicado em 40 segundos</div>
-        </div>
-        <div class="acoes"><button class="btn">Editar</button><button class="btn" disabled>Publica em ~8min</button></div>
+      <div id="lista-fila">
+        <p style="color:var(--cinza-500); font-size:13px;">Carregando itens da planilha...</p>
       </div>
     </section>
 
@@ -473,6 +450,67 @@
 <script>
   const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwp_tqImNntndXqj35NhaP6KDqwU2knEeKnY3BzvpEq3oZZ4iHmD-qXXm70iHCpl6kE-g/exec';
 
+  function carregarFila() {
+    const lista = document.getElementById('lista-fila');
+    const contexto = document.getElementById('contexto-fila');
+    lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Carregando itens da planilha...</p>';
+
+    fetch(WEBAPP_URL + '?acao=listar_fila')
+      .then(r => r.json())
+      .then(dados => {
+        const itens = dados.itens || [];
+        const pendentes = itens.filter(i => i.status === 'pendente').length;
+        contexto.textContent = pendentes + ' pendente(s) · ' + itens.length + ' no total aguardando · atualizado agora';
+
+        document.querySelector('.nav-item[data-secao="fila"] .contagem').textContent = pendentes || '·';
+
+        if (!itens.length) {
+          lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Nada esperando por enquanto — tudo publicado ou nada foi enviado pra revisão/agendado.</p>';
+          return;
+        }
+
+        lista.innerHTML = itens.map(item => {
+          const tituloTexto = (item.legenda || '').substring(0, 70) || '(sem legenda)';
+          const tagStatus = item.status === 'agendado'
+            ? '<span class="tag-status aprovado">Agendado — ' + (item.agendadoPara ? new Date(item.agendadoPara).toLocaleString('pt-BR') : '') + '</span>'
+            : '<span class="tag-status pendente">Pendente</span>';
+          const acao = item.status === 'pendente'
+            ? '<button class="btn primario" onclick="aprovarItem(' + item.linha + ', this)">Aprovar e publicar</button>'
+            : '<span style="font-size:12px; color:var(--cinza-500);">publica sozinho na hora</span>';
+
+          return '<div class="item-fila">'
+            + '<div class="thumb">[' + item.tipo + ']</div>'
+            + '<div><span class="tag-segmento">' + item.segmento + '</span>' + tagStatus
+            + '<div class="titulo-item">' + tituloTexto + '</div></div>'
+            + '<div class="acoes">' + acao + '</div>'
+            + '</div>';
+        }).join('');
+      })
+      .catch(erro => {
+        lista.innerHTML = '<p style="color:var(--vermelho); font-size:13px;">Erro ao carregar: ' + erro.message + '</p>';
+      });
+  }
+
+  function aprovarItem(linha, botao) {
+    botao.textContent = 'Publicando...';
+    botao.disabled = true;
+
+    fetch(WEBAPP_URL, {
+      method: 'POST',
+      body: JSON.stringify({ acao: 'aprovar_item', linha: linha }),
+    })
+      .then(r => r.json())
+      .then(dados => {
+        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Aprovar e publicar'; botao.disabled = false; return; }
+        carregarFila();
+      })
+      .catch(erro => {
+        alert('Erro ao aprovar: ' + erro.message);
+        botao.textContent = 'Aprovar e publicar';
+        botao.disabled = false;
+      });
+  }
+
   function alternarModoPublicacao() {
     const modo = document.querySelector('input[name="modo-publicacao"]:checked').value;
     document.getElementById('campo-agendamento').style.display = (modo === 'agendar') ? 'block' : 'none';
@@ -596,8 +634,11 @@
       document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
       item.classList.add('ativo');
       document.getElementById('secao-' + item.dataset.secao).classList.add('ativa');
+      if (item.dataset.secao === 'fila') carregarFila();
     });
   });
+
+  carregarFila(); // carrega já na abertura, já que Fila de aprovação é a aba inicial
 </script>
 
 </body>
