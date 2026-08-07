@@ -196,7 +196,25 @@
             <label class="label">Dia previsto</label>
             <input type="text" id="dia-previsto-post" placeholder="ex: sábado, 09/08">
           </div>
-          <button type="button" class="btn primario" id="btn-enviar-fila" onclick="enviarParaFila()">Enviar para a fila</button>
+          <div class="campo">
+            <label class="label">O que fazer com esse post?</label>
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+              <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:400;">
+                <input type="radio" name="modo-publicacao" value="agora" checked onchange="alternarModoPublicacao()"> Publicar agora
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:400;">
+                <input type="radio" name="modo-publicacao" value="agendar" onchange="alternarModoPublicacao()"> Agendar pra um horário específico
+              </label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:400;">
+                <input type="radio" name="modo-publicacao" value="revisao" onchange="alternarModoPublicacao()"> Enviar pra revisão (não publica sozinho)
+              </label>
+            </div>
+          </div>
+          <div class="campo" id="campo-agendamento" style="display:none;">
+            <label class="label">Data e hora do agendamento</label>
+            <input type="datetime-local" id="data-agendamento">
+          </div>
+          <button type="button" class="btn primario" id="btn-enviar-fila" onclick="enviarParaFila()">Publicar agora</button>
         </div>
 
         <div class="painel-ia">
@@ -455,11 +473,25 @@
 <script>
   const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwp_tqImNntndXqj35NhaP6KDqwU2knEeKnY3BzvpEq3oZZ4iHmD-qXXm70iHCpl6kE-g/exec';
 
+  function alternarModoPublicacao() {
+    const modo = document.querySelector('input[name="modo-publicacao"]:checked').value;
+    document.getElementById('campo-agendamento').style.display = (modo === 'agendar') ? 'block' : 'none';
+    const botao = document.getElementById('btn-enviar-fila');
+    botao.textContent = { agora: 'Publicar agora', agendar: 'Agendar', revisao: 'Enviar para revisão' }[modo];
+  }
+
   function enviarParaFila() {
     const tipo = document.getElementById('tipo-midia').value;
     const segmento = document.getElementById('segmento-post').value;
     const legenda = document.getElementById('legenda-post').value.trim();
     const diaPrevisto = document.getElementById('dia-previsto-post').value.trim();
+    const modo = document.querySelector('input[name="modo-publicacao"]:checked').value;
+
+    let dataAgendamento = '';
+    if (modo === 'agendar') {
+      dataAgendamento = document.getElementById('data-agendamento').value;
+      if (!dataAgendamento) { alert('Escolha uma data e hora pra agendar.'); return; }
+    }
 
     let midiaUrl;
     if (tipo === 'carrossel') {
@@ -473,29 +505,33 @@
     if (!legenda) { alert('Escreva uma legenda antes de enviar.'); return; }
 
     const botao = document.getElementById('btn-enviar-fila');
-    botao.textContent = 'Publicando...';
+    const textoOriginal = botao.textContent;
+    botao.textContent = 'Enviando...';
     botao.disabled = true;
 
     fetch(WEBAPP_URL, {
       method: 'POST',
       body: JSON.stringify({
         acao: 'criar_item_fila',
+        modoPublicacao: modo,
         tipo: tipo,
         segmento: segmento,
         midiaUrl: midiaUrl,
         legenda: legenda,
         diaPrevisto: diaPrevisto,
+        dataAgendamento: dataAgendamento,
       }),
     })
       .then(r => r.json())
       .then(dados => {
-        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Enviar para a fila'; botao.disabled = false; return; }
-        botao.textContent = dados.postId ? '✓ Publicado!' : '✓ Enviado (aguardando publicação)';
-        setTimeout(() => { botao.textContent = 'Enviar para a fila'; botao.disabled = false; }, 4000);
+        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = textoOriginal; botao.disabled = false; return; }
+        const mensagens = { agora: '✓ Publicado!', agendar: '✓ Agendado!', revisao: '✓ Enviado para revisão' };
+        botao.textContent = mensagens[modo];
+        setTimeout(() => { botao.textContent = textoOriginal; botao.disabled = false; }, 4000);
       })
       .catch(erro => {
         alert('Erro ao enviar: ' + erro.message);
-        botao.textContent = 'Enviar para a fila';
+        botao.textContent = textoOriginal;
         botao.disabled = false;
       });
   }
