@@ -261,94 +261,30 @@
     <section class="secao" id="secao-insights">
       <div class="topo-secao">
         <h1 class="headline">Insights de horário</h1>
-        <span class="contexto">média de alcance por dia · período</span>
+        <span class="contexto" id="contexto-insights">carregando...</span>
       </div>
       <div class="wrap-insights">
-        <div class="grade-insights">
-          <div class="celula cabecalho"></div>
-          <div class="celula cabecalho">00–02</div>
-          <div class="celula cabecalho">02–04</div>
-          <div class="celula cabecalho">04–06</div>
-          <div class="celula cabecalho">06–08</div>
-          <div class="celula cabecalho">08–10</div>
-          <div class="celula cabecalho">10–12</div>
-          <div class="celula cabecalho">12–14</div>
-          <div class="celula cabecalho">14–16</div>
-          <div class="celula cabecalho">16–18</div>
-          <div class="celula cabecalho">18–20</div>
-          <div class="celula cabecalho">20–22</div>
-          <div class="celula cabecalho">22–24</div>
-
-          <div class="celula rotulo">Segunda</div>
-          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
-
-          <div class="celula rotulo">Terça</div>
-          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
-
-          <div class="celula rotulo">Quarta</div>
-          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
-
-          <div class="celula rotulo">Quinta</div>
-          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
-
-          <div class="celula rotulo">Sexta</div>
-          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
-
-          <div class="celula rotulo">Sábado</div>
-          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
-
-          <div class="celula rotulo">Domingo</div>
-          <div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div><div class="celula">—</div>
-        </div>
+        <div class="grade-insights" id="grade-insights"></div>
       </div>
-      <div class="aviso">Ainda sem dados suficientes — a tabela preenche sozinha conforme mais posts forem coletados pela automação. Cada célula vira mais escura (mais vermelha) quanto maior o alcance médio naquele bloco de horário.</div>
+      <div class="aviso">Cada célula fica mais vermelha quanto maior o alcance médio naquele bloco de horário. Precisa de histórico suficiente pra ficar confiável.</div>
 
       <div class="topo-secao" style="margin-top:36px;">
         <h1 class="headline" style="font-size:18px;">Ranking — desempenho na primeira hora</h1>
       </div>
-      <div class="ranking-item">
-        <div class="ranking-pos">1</div>
-        <div><div class="ranking-titulo">Obra parada na Praça da República</div><div class="ranking-meta">Olhar Crítico · terça, 18h</div></div>
-        <div class="ranking-num">—</div>
-      </div>
-      <div class="ranking-item">
-        <div class="ranking-pos">2</div>
-        <div><div class="ranking-titulo">Agenda cultural gratuita da semana</div><div class="ranking-meta">Rolê no Centro · sábado, 09h</div></div>
-        <div class="ranking-num">—</div>
-      </div>
-      <div class="ranking-item">
-        <div class="ranking-pos">3</div>
-        <div><div class="ranking-titulo">O que é IPTU progressivo</div><div class="ranking-meta">Direto ao Ponto · quinta, 12h</div></div>
-        <div class="ranking-num">—</div>
-      </div>
-      <div id="ranking-resto" style="display:none;">
-        <div class="ranking-item">
-          <div class="ranking-pos">4</div>
-          <div><div class="ranking-titulo">Memória: Praça da Luz nos anos 80</div><div class="ranking-meta">Memória do Centro · quarta, 15h</div></div>
-          <div class="ranking-num">—</div>
-        </div>
-        <div class="ranking-item">
-          <div class="ranking-pos">5</div>
-          <div><div class="ranking-titulo">Depoimento: 20 anos de comércio na Ifigênia</div><div class="ranking-meta">Voz da Comunidade · sexta, 17h</div></div>
-          <div class="ranking-num">—</div>
-        </div>
-      </div>
-      <button class="btn" style="margin-top:12px;" onclick="alternarRankingCompleto(this)">Ver lista completa</button>
+      <div id="ranking-topo"></div>
+      <div id="ranking-resto" style="display:none;"></div>
+      <button class="btn" id="btn-ranking-completo" style="margin-top:12px; display:none;" onclick="alternarRankingCompleto(this)">Ver lista completa</button>
 
       <div class="topo-secao" style="margin-top:36px;">
         <h1 class="headline" style="font-size:18px;">Saúde da automação de comentário</h1>
       </div>
-      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--cinza-300); border:1px solid var(--cinza-300); max-width:640px;">
-        <div style="background:var(--branco); padding:16px;"><div class="label" style="color:var(--cinza-500);">Respondido pela IA</div><div class="headline" style="font-size:26px; margin-top:6px;">—</div></div>
-        <div style="background:var(--branco); padding:16px;"><div class="label" style="color:var(--cinza-500);">Escalado pra você</div><div class="headline" style="font-size:26px; margin-top:6px;">—</div></div>
-        <div style="background:var(--branco); padding:16px;"><div class="label" style="color:var(--cinza-500);">Avaliado como ruim</div><div class="headline" style="font-size:26px; margin-top:6px; color:var(--vermelho);">—</div></div>
-      </div>
-      <div class="aviso">Última coluna sobe quando você marca uma resposta da IA como "ruim" — é o sinal de que vale revisar as instruções em Contexto & IA.</div>
+      <div id="grade-saude" style="display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--cinza-300); border:1px solid var(--cinza-300); max-width:640px;"></div>
+      <div class="aviso">"Avaliado como ruim" sobe quando você marca uma resposta da IA como ruim na aba comentários da planilha — é o sinal de que vale revisar as instruções em Contexto & IA.</div>
 
       <div class="topo-secao" style="margin-top:36px;">
         <h1 class="headline" style="font-size:18px;">Crescimento de seguidores</h1>
       </div>
-      <div class="aviso">Gráfico de linha com o histórico de seguidores captado a cada 15 minutos — aparece assim que houver pontos suficientes pra desenhar uma curva.</div>
+      <div id="resumo-seguidores" class="aviso">Carregando...</div>
     </section>
 
     <section class="secao" id="secao-comentarios">
@@ -415,6 +351,119 @@
 
 <script>
   const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwp_tqImNntndXqj35NhaP6KDqwU2knEeKnY3BzvpEq3oZZ4iHmD-qXXm70iHCpl6kE-g/exec';
+
+  const PERIODOS_INSIGHTS = (() => {
+    const lista = [];
+    for (let h = 0; h < 24; h += 2) {
+      const fmt = n => (n < 10 ? '0' : '') + n + 'h';
+      lista.push(fmt(h) + '–' + fmt(h + 2));
+    }
+    return lista;
+  })();
+  const DIAS_INSIGHTS = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
+
+  function carregarInsights() {
+    const contexto = document.getElementById('contexto-insights');
+    contexto.textContent = 'carregando...';
+
+    fetch(WEBAPP_URL + '?acao=listar_insights')
+      .then(r => r.json())
+      .then(dados => {
+        contexto.textContent = 'atualizado agora';
+        montarHeatmap_(dados.horarios || []);
+        montarRanking_(dados.ranking || []);
+        montarSaude_(dados.saude || {});
+        montarSeguidores_(dados.seguidores || []);
+      })
+      .catch(erro => {
+        contexto.textContent = 'erro ao carregar';
+        console.error(erro);
+      });
+  }
+
+  function montarHeatmap_(horarios) {
+    const mapa = {};
+    let maxAlcance = 0;
+    horarios.forEach(h => {
+      mapa[h.diaSemana + '|' + h.periodo] = h;
+      if (Number(h.alcance) > maxAlcance) maxAlcance = Number(h.alcance);
+    });
+
+    let html = '<div class="celula cabecalho"></div>';
+    PERIODOS_INSIGHTS.forEach(p => { html += '<div class="celula cabecalho">' + p + '</div>'; });
+
+    DIAS_INSIGHTS.forEach(dia => {
+      html += '<div class="celula rotulo">' + dia.charAt(0).toUpperCase() + dia.slice(1) + '</div>';
+      PERIODOS_INSIGHTS.forEach(periodo => {
+        const chave = dia + '|' + periodo;
+        const item = mapa[chave];
+        if (!item || !maxAlcance) {
+          html += '<div class="celula">—</div>';
+        } else {
+          const intensidade = Math.max(0.12, Number(item.alcance) / maxAlcance);
+          html += '<div class="celula" style="background:rgba(228,0,43,' + intensidade.toFixed(2) + ');" title="' + item.alcance + ' de alcance médio, ' + item.qtd + ' post(s)">' + item.alcance + '</div>';
+        }
+      });
+    });
+
+    document.getElementById('grade-insights').innerHTML = html;
+  }
+
+  function montarRanking_(ranking) {
+    const topo = document.getElementById('ranking-topo');
+    const resto = document.getElementById('ranking-resto');
+    const botao = document.getElementById('btn-ranking-completo');
+
+    if (!ranking.length) {
+      topo.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Ainda sem posts com dado suficiente pra ranquear.</p>';
+      resto.innerHTML = '';
+      botao.style.display = 'none';
+      return;
+    }
+
+    const linhaHtml = (item, pos) => '<div class="ranking-item">'
+      + '<div class="ranking-pos">' + pos + '</div>'
+      + '<div><div class="ranking-titulo">' + (item.titulo || '(sem título)') + '</div>'
+      + '<div class="ranking-meta">' + new Date(item.publicadoEm).toLocaleString('pt-BR') + '</div></div>'
+      + '<div class="ranking-num">' + item.alcance + '</div>'
+      + '</div>';
+
+    topo.innerHTML = ranking.slice(0, 3).map((item, i) => linhaHtml(item, i + 1)).join('');
+
+    if (ranking.length > 3) {
+      resto.innerHTML = ranking.slice(3).map((item, i) => linhaHtml(item, i + 4)).join('');
+      botao.style.display = 'inline-block';
+      botao.textContent = 'Ver lista completa';
+    } else {
+      resto.innerHTML = '';
+      botao.style.display = 'none';
+    }
+  }
+
+  function montarSaude_(saude) {
+    const grade = document.getElementById('grade-saude');
+    const bloco = (rotulo, valor, vermelho) => '<div style="background:var(--branco); padding:16px;">'
+      + '<div class="label" style="color:var(--cinza-500);">' + rotulo + '</div>'
+      + '<div class="headline" style="font-size:26px; margin-top:6px;' + (vermelho ? ' color:var(--vermelho);' : '') + '">' + (valor || '—') + '</div>'
+      + '</div>';
+
+    grade.innerHTML = bloco('Respondido pela IA', saude.respondido_ia_pct)
+      + bloco('Escalado pra você', saude.escalado_pct)
+      + bloco('Avaliado como ruim', saude.avaliacao_ruim_pct, true);
+  }
+
+  function montarSeguidores_(seguidores) {
+    const resumo = document.getElementById('resumo-seguidores');
+    if (!seguidores.length) {
+      resumo.textContent = 'Ainda sem captura de seguidores registrada — aparece assim que a automação rodar algumas vezes.';
+      return;
+    }
+    const atual = seguidores[seguidores.length - 1];
+    const primeiro = seguidores[0];
+    const diferenca = Number(atual.seguidores) - Number(primeiro.seguidores);
+    const sinal = diferenca > 0 ? '+' : '';
+    resumo.textContent = atual.seguidores + ' seguidores agora (' + sinal + diferenca + ' desde ' + new Date(primeiro.capturadoEm).toLocaleDateString('pt-BR') + ')';
+  }
 
   function carregarFila() {
     const lista = document.getElementById('lista-fila');
@@ -668,6 +717,7 @@
       document.getElementById('secao-' + item.dataset.secao).classList.add('ativa');
       if (item.dataset.secao === 'fila') carregarFila();
       if (item.dataset.secao === 'comentarios') carregarComentarios();
+      if (item.dataset.secao === 'insights') carregarInsights();
     });
   });
 
