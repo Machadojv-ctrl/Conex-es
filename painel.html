@@ -144,11 +144,11 @@
       <div class="sub">painel de operação</div>
     </div>
     <nav>
-      <div class="nav-item ativo" data-secao="fila">Fila de aprovação <span class="contagem">3</span></div>
+      <div class="nav-item ativo" data-secao="fila">Fila de aprovação <span class="contagem zero">·</span></div>
       <div class="nav-item" data-secao="criar">Criar post</div>
       <div class="nav-item" data-secao="calendario">Calendário editorial <span class="contagem zero">·</span></div>
       <div class="nav-item" data-secao="insights">Insights <span class="contagem zero">·</span></div>
-      <div class="nav-item" data-secao="comentarios">Comentários <span class="contagem">5</span></div>
+      <div class="nav-item" data-secao="comentarios">Comentários <span class="contagem zero">·</span></div>
       <div class="nav-item" data-secao="contexto">Contexto & IA</div>
       <div class="nav-item" data-secao="radar">Radar de conteúdo <span class="contagem zero">·</span></div>
     </nav>
@@ -477,7 +477,9 @@
         const pendentes = itens.filter(i => i.status === 'pendente').length;
         contexto.textContent = pendentes + ' pendente(s) · ' + itens.length + ' no total aguardando · atualizado agora';
 
-        document.querySelector('.nav-item[data-secao="fila"] .contagem').textContent = pendentes || '·';
+        const badgeFila = document.querySelector('.nav-item[data-secao="fila"] .contagem');
+        badgeFila.textContent = pendentes || '·';
+        badgeFila.classList.toggle('zero', pendentes === 0);
 
         if (!itens.length) {
           lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Nada esperando por enquanto — tudo publicado ou nada foi enviado pra revisão/agendado.</p>';
@@ -537,7 +539,9 @@
         const itens = dados.itens || [];
         const escalados = itens.filter(i => i.acao === 'escalado').length;
         contexto.textContent = itens.length + ' no total · ' + escalados + ' aguardando você';
-        document.querySelector('.nav-item[data-secao="comentarios"] .contagem').textContent = escalados || '·';
+        const badgeComentarios = document.querySelector('.nav-item[data-secao="comentarios"] .contagem');
+        badgeComentarios.textContent = escalados || '·';
+        badgeComentarios.classList.toggle('zero', escalados === 0);
 
         if (!itens.length) {
           lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Nenhum comentário coletado ainda — o motor roda a cada 10 minutos automaticamente.</p>';
@@ -722,6 +726,7 @@
   });
 
   carregarFila(); // carrega já na abertura, já que Fila de aprovação é a aba inicial
+  carregarComentarios(); // carrega em segundo plano pra badge do menu já vir certa
 </script>
 
 </body>
