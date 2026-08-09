@@ -401,9 +401,10 @@
           lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Nenhuma instrução ativa ainda.</p>';
           return;
         }
-        lista.innerHTML = itens.map(item =>
-          '<div class="doc-item"><div class="nome">[' + item.secao + ']</div><div class="meta">' + item.conteudo + '</div></div>'
-        ).join('');
+        lista.innerHTML = itens.map(item => {
+          const conteudoResumido = item.conteudo.length > 150 ? item.conteudo.substring(0, 150) + '…' : item.conteudo;
+          return '<div class="doc-item"><div class="nome">[' + item.secao + ']</div><div class="meta">' + conteudoResumido + '</div></div>';
+        }).join('');
       })
       .catch(erro => {
         lista.innerHTML = '<p style="color:var(--vermelho); font-size:13px;">Erro ao carregar: ' + erro.message + '</p>';
