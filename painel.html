@@ -221,12 +221,9 @@
         <div class="painel-ia">
           <span class="tag-ia">Assistente IA</span>
           <div style="font-size:13px; margin-bottom:12px; color:#C9C7C2;">Descreva o que aconteceu, a IA rascunha a legenda no estilo do Conexão Central.</div>
-          <textarea placeholder="ex: obra na Praça da República parada há 4 meses, moradores reclamando de buraco na calçada..."></textarea>
-          <button class="btn-branco">Gerar rascunho</button>
-          <div class="rascunho">
-            <strong>Sugestão:</strong><br>
-            "🚧 A obra na Praça da República já leva 4 meses parada — e o buraco na calçada segue sem solução. Quem passa por ali todo dia sabe o risco. E aí, alguém da subprefeitura vai aparecer?"
-          </div>
+          <textarea id="descricao-ia" placeholder="ex: obra na Praça da República parada há 4 meses, moradores reclamando de buraco na calçada..."></textarea>
+          <button class="btn-branco" id="btn-gerar-rascunho" onclick="gerarRascunho()">Gerar rascunho</button>
+          <div class="rascunho" id="rascunho-ia" style="display:none;"></div>
         </div>
       </div>
     </section>
@@ -305,28 +302,20 @@
       </div>
       <div class="contexto-grid">
         <div class="chat">
-          <div class="chat-corpo">
-            <div class="msg ia">Oi! Posso ajudar a ajustar tom de resposta, revisar exemplos, ou você pode subir um documento de referência editorial ao lado.</div>
-            <div class="msg eu">A partir de agora, nunca use ponto de exclamação duplo em legenda.</div>
-            <div class="msg ia">Entendido — adicionei essa regra na aba de instruções. Vale também pra resposta de comentário, ou só posts?</div>
+          <div class="chat-corpo" id="chat-corpo">
+            <div class="msg ia">Oi! Pode me dar uma instrução (ex: "nunca use ponto de exclamação duplo") que eu registro na lista de diretrizes, ou só conversar.</div>
           </div>
           <div class="chat-input">
-            <input type="text" placeholder="Escreva uma instrução ou pergunta...">
-            <button>Enviar</button>
+            <input type="text" id="chat-input-texto" placeholder="Escreva uma instrução ou pergunta..." onkeydown="if(event.key==='Enter') enviarMensagemChat()">
+            <button onclick="enviarMensagemChat()">Enviar</button>
           </div>
         </div>
 
         <div>
-          <div class="label" style="margin-bottom:10px;">Documentos de contexto</div>
-          <div class="doc-item">
-            <div class="nome">Linha editorial — esquerda sem bandeira.md</div>
-            <div class="meta">enviado há 2 semanas</div>
-          </div>
-          <div class="doc-item">
-            <div class="nome">Exemplos de resposta aprovados.csv</div>
-            <div class="meta">enviado há 3 dias</div>
-          </div>
-          <button class="btn" style="width:100%; margin-top:8px;">+ Subir documento</button>
+          <div class="label" style="margin-bottom:10px;">Instruções ativas</div>
+          <div id="lista-instrucoes"><p style="color:var(--cinza-500); font-size:13px;">Carregando...</p></div>
+          <input type="file" id="arquivo-documento" accept=".txt,.md" style="display:none;" onchange="subirDocumentoContexto(this)">
+          <button class="btn" style="width:100%; margin-top:8px;" onclick="document.getElementById('arquivo-documento').click()">+ Subir documento (.txt ou .md)</button>
         </div>
       </div>
     </section>
@@ -361,6 +350,127 @@
     return lista;
   })();
   const DIAS_INSIGHTS = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
+
+  function gerarRascunho() {
+    const descricao = document.getElementById('descricao-ia').value.trim();
+    if (!descricao) { alert('Descreva o que aconteceu antes de pedir o rascunho.'); return; }
+
+    const segmento = document.getElementById('segmento-post').value;
+    const botao = document.getElementById('btn-gerar-rascunho');
+    const caixaRascunho = document.getElementById('rascunho-ia');
+
+    botao.textContent = 'Gerando...';
+    botao.disabled = true;
+    caixaRascunho.style.display = 'none';
+
+    fetch(WEBAPP_URL, {
+      method: 'POST',
+      body: JSON.stringify({ acao: 'gerar_legenda', descricao: descricao, segmento: segmento }),
+    })
+      .then(r => r.json())
+      .then(dados => {
+        botao.textContent = 'Gerar rascunho';
+        botao.disabled = false;
+        if (dados.erro) { alert('Erro: ' + dados.erro); return; }
+
+        caixaRascunho.style.display = 'block';
+        caixaRascunho.innerHTML = '<strong>Sugestão:</strong><br>"' + dados.legenda + '"'
+          + '<br><br><button class="btn-branco" style="margin-top:4px;" onclick="usarRascunho()">Usar essa legenda</button>';
+        window.ultimoRascunhoGerado = dados.legenda;
+      })
+      .catch(erro => {
+        botao.textContent = 'Gerar rascunho';
+        botao.disabled = false;
+        alert('Erro ao gerar: ' + erro.message);
+      });
+  }
+
+  function usarRascunho() {
+    document.getElementById('legenda-post').value = window.ultimoRascunhoGerado || '';
+  }
+
+  function carregarContexto() {
+    const lista = document.getElementById('lista-instrucoes');
+    lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Carregando...</p>';
+
+    fetch(WEBAPP_URL + '?acao=listar_instrucoes')
+      .then(r => r.json())
+      .then(dados => {
+        const itens = dados.itens || [];
+        if (!itens.length) {
+          lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Nenhuma instrução ativa ainda.</p>';
+          return;
+        }
+        lista.innerHTML = itens.map(item =>
+          '<div class="doc-item"><div class="nome">[' + item.secao + ']</div><div class="meta">' + item.conteudo + '</div></div>'
+        ).join('');
+      })
+      .catch(erro => {
+        lista.innerHTML = '<p style="color:var(--vermelho); font-size:13px;">Erro ao carregar: ' + erro.message + '</p>';
+      });
+  }
+
+  function enviarMensagemChat() {
+    const input = document.getElementById('chat-input-texto');
+    const mensagem = input.value.trim();
+    if (!mensagem) return;
+
+    const corpo = document.getElementById('chat-corpo');
+    corpo.innerHTML += '<div class="msg eu">' + mensagem + '</div>';
+    corpo.scrollTop = corpo.scrollHeight;
+    input.value = '';
+    input.disabled = true;
+
+    corpo.innerHTML += '<div class="msg ia" id="msg-carregando">...</div>';
+    corpo.scrollTop = corpo.scrollHeight;
+
+    fetch(WEBAPP_URL, {
+      method: 'POST',
+      body: JSON.stringify({ acao: 'conversar_contexto', mensagem: mensagem }),
+    })
+      .then(r => r.json())
+      .then(dados => {
+        document.getElementById('msg-carregando').remove();
+        if (dados.erro) {
+          corpo.innerHTML += '<div class="msg ia">Erro: ' + dados.erro + '</div>';
+        } else {
+          corpo.innerHTML += '<div class="msg ia">' + dados.respostaChat + '</div>';
+          if (dados.instrucaoAdicionada) carregarContexto();
+        }
+        corpo.scrollTop = corpo.scrollHeight;
+        input.disabled = false;
+        input.focus();
+      })
+      .catch(erro => {
+        document.getElementById('msg-carregando').remove();
+        corpo.innerHTML += '<div class="msg ia">Erro ao enviar: ' + erro.message + '</div>';
+        input.disabled = false;
+      });
+  }
+
+  function subirDocumentoContexto(input) {
+    const arquivo = input.files[0];
+    if (!arquivo) return;
+
+    const leitor = new FileReader();
+    leitor.onload = function () {
+      fetch(WEBAPP_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          acao: 'adicionar_documento_contexto',
+          nomeArquivo: arquivo.name,
+          conteudo: leitor.result,
+        }),
+      })
+        .then(r => r.json())
+        .then(dados => {
+          if (dados.erro) { alert('Erro: ' + dados.erro); return; }
+          carregarContexto();
+        })
+        .catch(erro => alert('Erro ao subir documento: ' + erro.message));
+    };
+    leitor.readAsText(arquivo);
+  }
 
   function carregarInsights() {
     const contexto = document.getElementById('contexto-insights');
@@ -722,6 +832,7 @@
       if (item.dataset.secao === 'fila') carregarFila();
       if (item.dataset.secao === 'comentarios') carregarComentarios();
       if (item.dataset.secao === 'insights') carregarInsights();
+      if (item.dataset.secao === 'contexto') carregarContexto();
     });
   });
 
