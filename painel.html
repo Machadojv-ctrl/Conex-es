@@ -750,6 +750,15 @@
     document.getElementById('campo-agendamento').style.display = (modo === 'agendar') ? 'block' : 'none';
     const botao = document.getElementById('btn-enviar-fila');
     botao.textContent = { agora: 'Publicar agora', agendar: 'Agendar', revisao: 'Enviar para revisão' }[modo];
+
+    if (modo === 'agendar') {
+      const campoData = document.getElementById('data-agendamento');
+      if (!campoData.value) {
+        const agora = new Date();
+        agora.setMinutes(agora.getMinutes() - agora.getTimezoneOffset()); // ajusta pro horário local, não UTC
+        campoData.value = agora.toISOString().slice(0, 16);
+      }
+    }
   }
 
   function enviarParaFila() {
