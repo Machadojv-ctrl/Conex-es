@@ -178,12 +178,9 @@
             <input type="text" id="url-midia-enviada" readonly placeholder="a URL aparece aqui depois do envio" style="width:100%; border:1px solid var(--cinza-300); padding:8px 10px; font-size:12px; margin-top:8px; background:var(--cinza-50);" onclick="this.select()">
           </div>
           <div class="campo" id="campo-midia-carrossel" style="display:none;">
-            <label class="label">Links do carrossel (2 a 10 itens)</label>
-            <div id="lista-links-carrossel">
-              <input type="text" placeholder="https://... (item 1)" style="margin-bottom:8px;">
-              <input type="text" placeholder="https://... (item 2)" style="margin-bottom:8px;">
-            </div>
-            <button type="button" class="btn" onclick="adicionarLinkCarrossel()">+ Adicionar imagem</button>
+            <label class="label">Itens do carrossel (2 a 10 — foto ou vídeo)</label>
+            <div id="lista-links-carrossel"></div>
+            <button type="button" class="btn" onclick="adicionarSlotCarrossel()">+ Adicionar imagem</button>
           </div>
           <div class="campo">
             <label class="label">Segmento</label>
@@ -729,8 +726,8 @@
 
     let midiaUrl;
     if (tipo === 'carrossel') {
-      const links = Array.from(document.querySelectorAll('#lista-links-carrossel input')).map(i => i.value.trim()).filter(Boolean);
-      if (links.length < 2) { alert('Carrossel precisa de pelo menos 2 links preenchidos.'); return; }
+      const links = Array.from(document.querySelectorAll('.url-carrossel-valor')).map(i => i.value.trim()).filter(Boolean);
+      if (links.length < 2) { alert('Suba pelo menos 2 imagens/vídeos no carrossel antes de enviar.'); return; }
       midiaUrl = links.join('|');
     } else {
       midiaUrl = document.getElementById('url-midia-enviada').value.trim();
@@ -805,16 +802,58 @@
     const tipo = document.getElementById('tipo-midia').value;
     document.getElementById('campo-midia-unica').style.display = (tipo === 'carrossel') ? 'none' : 'block';
     document.getElementById('campo-midia-carrossel').style.display = (tipo === 'carrossel') ? 'block' : 'none';
+
+    if (tipo === 'carrossel' && document.getElementById('lista-links-carrossel').children.length === 0) {
+      adicionarSlotCarrossel();
+      adicionarSlotCarrossel();
+    }
   }
-  function adicionarLinkCarrossel() {
+
+  let contadorSlotsCarrossel = 0;
+
+  function adicionarSlotCarrossel() {
     const lista = document.getElementById('lista-links-carrossel');
     if (lista.children.length >= 10) { alert('Máximo de 10 itens por carrossel.'); return; }
-    const novo = document.createElement('input');
-    novo.type = 'text';
-    novo.placeholder = 'https://... (item ' + (lista.children.length + 1) + ')';
-    novo.style.marginBottom = '8px';
-    lista.appendChild(novo);
+    contadorSlotsCarrossel++;
+    const n = contadorSlotsCarrossel;
+
+    const div = document.createElement('div');
+    div.style.cssText = 'margin-bottom:10px; border:1px dashed var(--cinza-300); padding:10px;';
+    div.innerHTML = '<input type="file" accept="image/*,video/*" onchange="enviarArquivoCarrossel(this, ' + n + ')">'
+      + '<div class="status-carrossel" id="status-carrossel-' + n + '" style="font-size:12px; margin-top:4px; color:var(--cinza-500);">item ' + lista.children.length + 1 + '</div>'
+      + '<input type="hidden" class="url-carrossel-valor" id="url-carrossel-' + n + '">';
+    lista.appendChild(div);
   }
+
+  function enviarArquivoCarrossel(input, n) {
+    const arquivo = input.files[0];
+    if (!arquivo) return;
+    const statusEl = document.getElementById('status-carrossel-' + n);
+    statusEl.textContent = 'Enviando...';
+    statusEl.style.color = 'var(--cinza-500)';
+
+    const leitor = new FileReader();
+    leitor.onload = function () {
+      const base64 = leitor.result.split(',')[1];
+      fetch(WEBAPP_URL, {
+        method: 'POST',
+        body: JSON.stringify({ imagemBase64: base64, nomeArquivo: arquivo.name, tipoMime: arquivo.type }),
+      })
+        .then(r => r.json())
+        .then(dados => {
+          if (dados.erro) { statusEl.textContent = 'Erro: ' + dados.erro; statusEl.style.color = 'var(--vermelho)'; return; }
+          document.getElementById('url-carrossel-' + n).value = dados.url;
+          statusEl.textContent = '✓ Enviado: ' + arquivo.name;
+          statusEl.style.color = 'var(--vermelho)';
+        })
+        .catch(erro => {
+          statusEl.textContent = 'Erro: ' + erro.message;
+          statusEl.style.color = 'var(--vermelho)';
+        });
+    };
+    leitor.readAsDataURL(arquivo);
+  }
+
   function alternarRankingCompleto(botao) {
     const resto = document.getElementById('ranking-resto');
     const mostrando = resto.style.display === 'block';
