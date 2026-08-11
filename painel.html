@@ -232,38 +232,17 @@
         <span class="contexto">expira em 24h · sem legenda</span>
       </div>
 
-      <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
-        <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:400;">
-          <input type="radio" name="modo-story" value="imagem" checked onchange="alternarModoStory()"> Postar uma imagem/vídeo
-        </label>
-        <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:400;">
-          <input type="radio" name="modo-story" value="compartilhar" onchange="alternarModoStory()"> Compartilhar um post existente
-        </label>
+      <div class="campo">
+        <label class="label">Tipo</label>
+        <select id="tipo-story"><option value="foto">Foto</option><option value="video">Vídeo</option></select>
       </div>
-
-      <div id="story-modo-imagem">
-        <div class="campo">
-          <label class="label">Tipo</label>
-          <select id="tipo-story"><option value="foto">Foto</option><option value="video">Vídeo</option></select>
-        </div>
-        <div class="campo">
-          <label class="label">Imagem ou vídeo</label>
-          <input type="file" id="arquivo-story" accept="image/*,video/*" onchange="enviarArquivoStory(this)">
-          <div id="status-upload-story" style="font-size:12px; margin-top:6px; color:var(--cinza-500);"></div>
-          <input type="text" id="url-story-enviada" readonly placeholder="a URL aparece aqui depois do envio" style="width:100%; border:1px solid var(--cinza-300); padding:8px 10px; font-size:12px; margin-top:8px; background:var(--cinza-50);" onclick="this.select()">
-        </div>
-        <button type="button" class="btn primario" id="btn-publicar-story" onclick="publicarStory()">Publicar no Stories</button>
+      <div class="campo">
+        <label class="label">Imagem ou vídeo</label>
+        <input type="file" id="arquivo-story" accept="image/*,video/*" onchange="enviarArquivoStory(this)">
+        <div id="status-upload-story" style="font-size:12px; margin-top:6px; color:var(--cinza-500);"></div>
+        <input type="text" id="url-story-enviada" readonly placeholder="a URL aparece aqui depois do envio" style="width:100%; border:1px solid var(--cinza-300); padding:8px 10px; font-size:12px; margin-top:8px; background:var(--cinza-50);" onclick="this.select()">
       </div>
-
-      <div id="story-modo-compartilhar" style="display:none;">
-        <div class="aviso">
-          A Meta não libera "compartilhar post existente no Stories" via API — esse formato (com o post empilhado) só funciona
-          direto pelo app do Instagram no celular, é uma limitação da própria plataforma, não nossa.
-          <br><br>
-          Alternativa: baixe a imagem do post que quer compartilhar e suba ela na aba "Postar uma imagem/vídeo" ao lado —
-          o conteúdo visual vai, só sem o cartão empilhado característico do compartilhamento nativo.
-        </div>
-      </div>
+      <button type="button" class="btn primario" id="btn-publicar-story" onclick="publicarStory()">Publicar no Stories</button>
     </section>
 
     <section class="secao ativa" id="secao-fila">
@@ -622,7 +601,8 @@
     fetch(WEBAPP_URL + '?acao=listar_fila')
       .then(r => r.json())
       .then(dados => {
-        const itens = dados.itens || [];
+        window.itensFilaAtual = dados.itens || [];
+        const itens = window.itensFilaAtual;
         const pendentes = itens.filter(i => i.status === 'pendente').length;
         contexto.textContent = pendentes + ' pendente(s) · ' + itens.length + ' no total aguardando · atualizado agora';
 
@@ -635,25 +615,88 @@
           return;
         }
 
-        lista.innerHTML = itens.map(item => {
-          const tituloTexto = (item.legenda || '').substring(0, 70) || '(sem legenda)';
-          const tagStatus = item.status === 'agendado'
-            ? '<span class="tag-status aprovado">Agendado — ' + (item.agendadoPara ? new Date(item.agendadoPara).toLocaleString('pt-BR') : '') + '</span>'
-            : '<span class="tag-status pendente">Pendente</span>';
-          const acao = item.status === 'pendente'
-            ? '<button class="btn primario" onclick="aprovarItem(' + item.linha + ', this)">Aprovar e publicar</button>'
-            : '<span style="font-size:12px; color:var(--cinza-500);">publica sozinho na hora</span>';
-
-          return '<div class="item-fila">'
-            + '<div class="thumb">[' + item.tipo + ']</div>'
-            + '<div><span class="tag-segmento">' + item.segmento + '</span>' + tagStatus
-            + '<div class="titulo-item">' + tituloTexto + '</div></div>'
-            + '<div class="acoes">' + acao + '</div>'
-            + '</div>';
-        }).join('');
+        renderizarListaFila_();
       })
       .catch(erro => {
         lista.innerHTML = '<p style="color:var(--vermelho); font-size:13px;">Erro ao carregar: ' + erro.message + '</p>';
+      });
+  }
+
+  function renderizarListaFila_() {
+    const lista = document.getElementById('lista-fila');
+    const itens = window.itensFilaAtual || [];
+
+    lista.innerHTML = itens.map(item => {
+      if (window.linhaEmEdicao === item.linha) {
+        return montarFormularioEdicao_(item);
+      }
+
+      const tituloTexto = (item.legenda || '').substring(0, 70) || '(sem legenda)';
+      const tagStatus = item.status === 'agendado'
+        ? '<span class="tag-status aprovado">Agendado — ' + (item.agendadoPara ? new Date(item.agendadoPara).toLocaleString('pt-BR') : '') + '</span>'
+        : '<span class="tag-status pendente">Pendente</span>';
+      const acaoPrincipal = item.status === 'pendente'
+        ? '<button class="btn primario" onclick="aprovarItem(' + item.linha + ', this)">Aprovar e publicar</button>'
+        : '<span style="font-size:12px; color:var(--cinza-500);">publica sozinho na hora</span>';
+
+      return '<div class="item-fila">'
+        + '<div class="thumb">[' + item.tipo + ']</div>'
+        + '<div><span class="tag-segmento">' + item.segmento + '</span>' + tagStatus
+        + '<div class="titulo-item">' + tituloTexto + '</div></div>'
+        + '<div class="acoes"><button class="btn" onclick="editarItemFilaUI(' + item.linha + ')">Editar</button>' + acaoPrincipal + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  function montarFormularioEdicao_(item) {
+    const campoData = item.status === 'agendado'
+      ? '<label class="label" style="margin-top:10px; display:block;">Data e hora do agendamento</label>'
+        + '<input type="datetime-local" id="edicao-data-' + item.linha + '" value="' + (item.agendadoPara ? item.agendadoPara.slice(0, 16) : '') + '">'
+      : '';
+
+    return '<div class="item-fila" style="grid-template-columns:1fr;">'
+      + '<div>'
+      + '<span class="tag-segmento">' + item.segmento + '</span>'
+      + '<textarea id="edicao-legenda-' + item.linha + '" style="width:100%; border:1px solid var(--cinza-300); padding:10px; font-size:13px; min-height:70px; margin-top:8px;">' + (item.legenda || '') + '</textarea>'
+      + campoData
+      + '<div class="acoes" style="margin-top:10px;">'
+      + '<button class="btn" onclick="cancelarEdicaoFila()">Cancelar</button>'
+      + '<button class="btn primario" onclick="salvarEdicaoFila(' + item.linha + ', this)">Salvar</button>'
+      + '</div></div></div>';
+  }
+
+  function editarItemFilaUI(linha) {
+    window.linhaEmEdicao = linha;
+    renderizarListaFila_();
+  }
+
+  function cancelarEdicaoFila() {
+    window.linhaEmEdicao = null;
+    renderizarListaFila_();
+  }
+
+  function salvarEdicaoFila(linha, botao) {
+    const legenda = document.getElementById('edicao-legenda-' + linha).value.trim();
+    const campoData = document.getElementById('edicao-data-' + linha);
+    const dataAgendamento = campoData ? campoData.value : '';
+
+    botao.textContent = 'Salvando...';
+    botao.disabled = true;
+
+    fetch(WEBAPP_URL, {
+      method: 'POST',
+      body: JSON.stringify({ acao: 'editar_item_fila', linha: linha, legenda: legenda, dataAgendamento: dataAgendamento }),
+    })
+      .then(r => r.json())
+      .then(dados => {
+        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Salvar'; botao.disabled = false; return; }
+        window.linhaEmEdicao = null;
+        carregarFila();
+      })
+      .catch(erro => {
+        alert('Erro ao salvar: ' + erro.message);
+        botao.textContent = 'Salvar';
+        botao.disabled = false;
       });
   }
 
@@ -846,12 +889,6 @@
         });
     };
     leitor.readAsDataURL(arquivo);
-  }
-
-  function alternarModoStory() {
-    const modo = document.querySelector('input[name="modo-story"]:checked').value;
-    document.getElementById('story-modo-imagem').style.display = (modo === 'imagem') ? 'block' : 'none';
-    document.getElementById('story-modo-compartilhar').style.display = (modo === 'compartilhar') ? 'block' : 'none';
   }
 
   function enviarArquivoStory(input) {
