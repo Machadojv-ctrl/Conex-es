@@ -728,6 +728,11 @@
     fetch(WEBAPP_URL + '?acao=listar_comentarios')
       .then(r => r.json())
       .then(dados => {
+        if (dados.erro) {
+          lista.innerHTML = '<p style="color:var(--vermelho); font-size:13px;">Erro do servidor: ' + dados.erro + '</p>';
+          contexto.textContent = 'erro';
+          return;
+        }
         const itens = dados.itens || [];
         const escalados = itens.filter(i => i.acao === 'escalado').length;
         contexto.textContent = itens.length + ' no total · ' + escalados + ' aguardando você';
