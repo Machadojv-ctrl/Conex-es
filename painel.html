@@ -406,7 +406,7 @@
     const lista = document.getElementById('lista-instrucoes');
     lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Carregando...</p>';
 
-    fetch(WEBAPP_URL + '?acao=listar_instrucoes')
+    fetch(WEBAPP_URL + '?acao=listar_instrucoes', { cache: 'no-store' })
       .then(r => r.json())
       .then(dados => {
         const itens = dados.itens || [];
@@ -490,7 +490,7 @@
     const contexto = document.getElementById('contexto-insights');
     contexto.textContent = 'carregando...';
 
-    fetch(WEBAPP_URL + '?acao=listar_insights')
+    fetch(WEBAPP_URL + '?acao=listar_insights', { cache: 'no-store' })
       .then(r => r.json())
       .then(dados => {
         contexto.textContent = 'atualizado agora';
@@ -594,7 +594,7 @@
     const contexto = document.getElementById('contexto-fila');
     lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Carregando itens da planilha...</p>';
 
-    fetch(WEBAPP_URL + '?acao=listar_fila')
+    fetch(WEBAPP_URL + '?acao=listar_fila', { cache: 'no-store' })
       .then(r => r.json())
       .then(dados => {
         window.itensFilaAtual = dados.itens || [];
@@ -721,7 +721,7 @@
     const contexto = document.getElementById('contexto-comentarios');
     lista.innerHTML = '<p style="color:var(--cinza-500); font-size:13px;">Carregando comentários da planilha...</p>';
 
-    fetch(WEBAPP_URL + '?acao=listar_comentarios')
+    fetch(WEBAPP_URL + '?acao=listar_comentarios', { cache: 'no-store' })
       .then(r => r.json())
       .then(dados => {
         if (dados.erro) {
