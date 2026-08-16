@@ -134,6 +134,10 @@
 <body>
 
 <div class="app">
+  <div id="toast-notificacao" style="display:none; position:fixed; top:24px; right:24px; background:var(--preto); color:var(--branco); border:2px solid var(--vermelho); padding:16px 40px 16px 20px; max-width:320px; z-index:1000; box-shadow:none;">
+    <button onclick="fecharToast()" style="position:absolute; top:8px; right:10px; background:none; border:none; color:var(--branco); font-size:16px; cursor:pointer; line-height:1;">×</button>
+    <div id="toast-texto" style="font-family:'Archivo',sans-serif; font-weight:700; font-size:13px;"></div>
+  </div>
   <aside class="sidebar">
     <div class="marca">
       <div class="headline">CONEXÃO CENTRAL</div>
@@ -850,15 +854,42 @@
       .then(r => r.json())
       .then(dados => {
         if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = textoOriginal; botao.disabled = false; return; }
-        const mensagens = { agora: '✓ Publicado!', agendar: '✓ Agendado!', revisao: '✓ Enviado para revisão' };
-        botao.textContent = mensagens[modo];
-        setTimeout(() => { botao.textContent = textoOriginal; botao.disabled = false; }, 4000);
+        const mensagens = { agora: 'Post publicado!', agendar: 'Post agendado!', revisao: 'Post enviado para a fila de aprovação!' };
+        mostrarToast(mensagens[modo]);
+        limparFormularioCriarPost_();
+        botao.textContent = textoOriginal;
+        botao.disabled = false;
       })
       .catch(erro => {
         alert('Erro ao enviar: ' + erro.message);
         botao.textContent = textoOriginal;
         botao.disabled = false;
       });
+  }
+
+  function mostrarToast(mensagem) {
+    document.getElementById('toast-texto').textContent = mensagem;
+    document.getElementById('toast-notificacao').style.display = 'block';
+  }
+
+  function fecharToast() {
+    document.getElementById('toast-notificacao').style.display = 'none';
+  }
+
+  function limparFormularioCriarPost_() {
+    document.getElementById('tipo-midia').value = 'foto';
+    alternarCampoMidia();
+    document.getElementById('segmento-post').selectedIndex = 0;
+    document.getElementById('legenda-post').value = '';
+    document.getElementById('dia-previsto-post').value = '';
+    document.getElementById('url-midia-enviada').value = '';
+    document.getElementById('status-upload').textContent = '';
+    document.getElementById('lista-links-carrossel').innerHTML = '';
+    contadorSlotsCarrossel = 0;
+    document.querySelector('input[name="modo-publicacao"][value="agora"]').checked = true;
+    alternarModoPublicacao();
+    document.getElementById('descricao-ia').value = '';
+    document.getElementById('rascunho-ia').style.display = 'none';
   }
 
   function enviarArquivo(input) {
