@@ -73,6 +73,21 @@
   .dia.hoje{background:var(--preto); color:var(--branco);}
   .dia.hoje .label{color:var(--cinza-300);}
 
+  /* ---------- CALENDÁRIO ---------- */
+  .kanban-avisos{display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;}
+  .pill-aviso{font-family:'Archivo',sans-serif; font-weight:700; font-size:12px; padding:8px 14px; border:2px solid var(--preto); background:var(--branco);}
+  .pill-aviso.atrasado{background:var(--vermelho); color:var(--branco); border-color:var(--vermelho);}
+  .kanban{display:grid; grid-template-columns:repeat(7,1fr); gap:10px; align-items:start;}
+  .kanban-coluna{background:rgba(255,255,255,0.5); border:2px dashed var(--cinza-300); padding:10px; min-height:160px;}
+  .kanban-coluna.hoje{border-color:var(--vermelho); border-style:solid;}
+  .kanban-coluna-topo{font-family:'Archivo',sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; margin-bottom:10px; text-align:center; letter-spacing:0.04em;}
+  .kanban-card{background:var(--branco); border:2px solid var(--preto); padding:10px; margin-bottom:10px; cursor:grab; font-size:12px; position:relative;}
+  .kanban-card.atrasado{border-color:var(--vermelho);}
+  .kanban-card .seg{font-family:'Archivo',sans-serif; font-weight:700; font-size:9px; text-transform:uppercase; background:var(--preto); color:var(--branco); padding:2px 6px; display:inline-block; margin-bottom:6px; margin-right:20px;}
+  .kanban-card .desc{font-family:'Source Serif 4',serif; font-size:12px; line-height:1.35;}
+  .kanban-card .excluir{position:absolute; top:6px; right:6px; background:none; border:none; cursor:pointer; font-size:14px; color:var(--cinza-500); line-height:1;}
+  .kanban-add{width:100%; border:2px dashed var(--cinza-300); background:transparent; padding:8px; font-family:'Archivo',sans-serif; font-size:10px; text-transform:uppercase; cursor:pointer;}
+
   /* ---------- INSIGHTS DE HORÁRIO ---------- */
   .wrap-insights{overflow-x:auto; max-width:100%;}
   .grade-insights{display:grid; grid-template-columns:90px repeat(12,64px); gap:1px; background:var(--preto); border:2px solid var(--preto); width:max-content;}
@@ -261,8 +276,9 @@
         <h1 class="headline">Calendário editorial</h1>
         <span class="contexto" id="contexto-calendario">carregando...</span>
       </div>
-      <div class="semana" id="grade-calendario"></div>
-      <div id="editor-dia-calendario" style="margin-top:24px;"></div>
+      <div class="kanban-avisos" id="kanban-avisos"></div>
+      <div class="kanban" id="kanban-board"></div>
+      <div id="editor-cartao-calendario" style="margin-top:24px;"></div>
     </section>
 
     <section class="secao" id="secao-insights">
@@ -598,7 +614,8 @@
 
   function carregarCalendario() {
     const contexto = document.getElementById('contexto-calendario');
-    const grade = document.getElementById('grade-calendario');
+    const avisos = document.getElementById('kanban-avisos');
+    const board = document.getElementById('kanban-board');
     contexto.textContent = 'carregando...';
 
     fetch(WEBAPP_URL + '?acao=listar_calendario', { cache: 'no-store' })
@@ -610,111 +627,155 @@
         fimSemana.setDate(inicioSemana.getDate() + 6);
         contexto.textContent = 'semana de ' + inicioSemana.toLocaleDateString('pt-BR') + ' a ' + fimSemana.toLocaleDateString('pt-BR');
 
+        const atrasados = dados.atrasados || [];
+        let htmlAvisos = '<div class="pill-aviso">' + (dados.hojeCount || 0) + ' post(s) pra hoje</div>';
+        if (atrasados.length) htmlAvisos += '<div class="pill-aviso atrasado">⚠ ' + atrasados.length + ' atrasado(s)</div>';
+        avisos.innerHTML = htmlAvisos;
+
         const hoje = new Date();
         const indiceHoje = (hoje.getDay() + 6) % 7;
 
-        grade.innerHTML = FORMULA_SEMANAL.map((dia, indice) => {
+        board.innerHTML = FORMULA_SEMANAL.map((dia, indice) => {
           const itens = (dados.itensPorDia && dados.itensPorDia[indice]) || [];
-          const classes = ['dia'];
-          if (indice === indiceHoje) classes.push('hoje');
-          if (itens.length) classes.push('preenchido');
+          const classeHoje = indice === indiceHoje ? ' hoje' : '';
+          const cartoes = itens.map(item => montarCartaoKanban_(item)).join('');
 
-          const preview = itens.length
-            ? '<div style="font-size:11px; margin-top:6px; opacity:0.8;">' + (itens[0].legenda.substring(0, 34) || '(sem legenda)') + (itens.length > 1 ? ' +' + (itens.length - 1) : '') + '</div>'
-            : '';
-
-          return '<div class="' + classes.join(' ') + '" style="cursor:pointer;" onclick="selecionarDiaCalendario(' + indice + ')">'
-            + '<div class="label">' + dia.rotulo + '</div>'
-            + '<div class="segmento-nome">' + dia.segmento + '</div>'
-            + preview
+          return '<div class="kanban-coluna' + classeHoje + '" ondragover="permitirDrop(event)" ondrop="soltarCartao(event, ' + indice + ')">'
+            + '<div class="kanban-coluna-topo">' + dia.rotulo + '</div>'
+            + cartoes
+            + '<button class="kanban-add" onclick="mostrarFormNovoCartao_(' + indice + ')">+ Adicionar</button>'
+            + '<div id="form-novo-cartao-' + indice + '"></div>'
             + '</div>';
         }).join('');
-
-        if (window.diaSelecionadoCalendario !== undefined) renderizarEditorDia_(window.diaSelecionadoCalendario);
       })
       .catch(erro => {
         contexto.textContent = 'erro ao carregar';
-        grade.innerHTML = '<p style="color:var(--vermelho); font-size:13px;">Erro: ' + erro.message + '</p>';
+        board.innerHTML = '<p style="color:var(--vermelho); font-size:13px;">Erro: ' + erro.message + '</p>';
       });
   }
 
-  function selecionarDiaCalendario(indice) {
-    window.diaSelecionadoCalendario = indice;
-    renderizarEditorDia_(indice);
+  function montarCartaoKanban_(item) {
+    const classeAtrasado = item.atrasado ? ' atrasado' : '';
+    const descricao = item.legenda ? item.legenda.substring(0, 60) : '(sem descrição)';
+    return '<div class="kanban-card' + classeAtrasado + '" draggable="true" ondragstart="arrastarCartao(event, ' + item.linha + ')" onclick="selecionarCartao(' + item.linha + ')">'
+      + '<button class="excluir" onclick="event.stopPropagation(); excluirCartao(' + item.linha + ')">×</button>'
+      + '<span class="seg">' + item.segmento + '</span>'
+      + '<div class="desc">' + descricao + '</div>'
+      + '</div>';
   }
 
-  function renderizarEditorDia_(indice) {
-    const container = document.getElementById('editor-dia-calendario');
-    const dadosSemana = window.calendarioAtual || {};
-    const dia = FORMULA_SEMANAL[indice];
-    const itens = (dadosSemana.itensPorDia && dadosSemana.itensPorDia[indice]) || [];
-
-    let html = '<div class="topo-secao" style="margin-top:0;"><h1 class="headline" style="font-size:16px;">' + dia.rotulo + ' — ' + dia.segmento + '</h1></div>';
-
-    itens.forEach(item => {
-      html += '<div class="item-fila" style="grid-template-columns:1fr;"><div>'
-        + '<span class="tag-status ' + (item.status === 'pendente' ? 'pendente' : 'aprovado') + '">' + item.status + '</span>'
-        + '<textarea id="cal-legenda-' + item.linha + '" style="width:100%; border:2px solid var(--preto); padding:10px; font-size:13px; min-height:70px; margin-top:8px;">' + item.legenda + '</textarea>'
-        + '<input type="text" id="cal-midia-' + item.linha + '" value="' + item.midiaUrl + '" placeholder="Link da mídia" style="width:100%; border:2px solid var(--preto); padding:8px 10px; font-size:12px; margin-top:8px;">'
-        + '<div class="acoes" style="margin-top:10px;"><button class="btn primario" onclick="salvarEdicaoCalendario(' + item.linha + ', this)">Salvar</button></div>'
-        + '</div></div>';
-    });
-
-    html += '<button class="btn" onclick="mostrarFormNovoItemCalendario(' + indice + ')">+ Planejar conteúdo pra ' + dia.rotulo + '</button>';
-    html += '<div id="form-novo-item-calendario"></div>';
-
-    container.innerHTML = html;
+  function arrastarCartao(evento, linha) {
+    evento.dataTransfer.setData('text/plain', linha);
   }
 
-  function mostrarFormNovoItemCalendario(indice) {
-    const div = document.getElementById('form-novo-item-calendario');
-    div.innerHTML = '<div class="item-fila" style="grid-template-columns:1fr; margin-top:14px;"><div>'
-      + '<label class="label">Tipo</label><select id="cal-novo-tipo" style="width:100%; border:2px solid var(--preto); padding:8px; margin-top:4px;"><option value="foto">Foto</option><option value="video">Vídeo</option><option value="carrossel">Carrossel</option></select>'
-      + '<label class="label" style="display:block; margin-top:10px;">Legenda</label><textarea id="cal-novo-legenda" style="width:100%; border:2px solid var(--preto); padding:10px; font-size:13px; min-height:70px; margin-top:4px;"></textarea>'
-      + '<label class="label" style="display:block; margin-top:10px;">Link da mídia (opcional por enquanto — pode completar depois)</label><input type="text" id="cal-novo-midia" style="width:100%; border:2px solid var(--preto); padding:8px 10px; font-size:12px; margin-top:4px;">'
-      + '<div class="acoes" style="margin-top:10px;"><button class="btn primario" onclick="salvarNovoItemCalendario(' + indice + ', this)">Salvar planejamento</button></div>'
-      + '</div></div>';
+  function permitirDrop(evento) {
+    evento.preventDefault();
   }
 
-  function salvarNovoItemCalendario(indice, botao) {
-    const dia = FORMULA_SEMANAL[indice];
-    const tipo = document.getElementById('cal-novo-tipo').value;
-    const legenda = document.getElementById('cal-novo-legenda').value.trim();
-    const midiaUrl = document.getElementById('cal-novo-midia').value.trim();
-    if (!legenda) { alert('Escreva uma legenda antes de salvar.'); return; }
-
-    botao.textContent = 'Salvando...';
-    botao.disabled = true;
+  function soltarCartao(evento, diaIndice) {
+    evento.preventDefault();
+    const linha = evento.dataTransfer.getData('text/plain');
+    if (!linha) return;
 
     fetch(WEBAPP_URL, {
       method: 'POST',
-      body: JSON.stringify({ acao: 'planejar_dia', diaIndice: indice, segmento: dia.segmento, tipo: tipo, legenda: legenda, midiaUrl: midiaUrl }),
+      body: JSON.stringify({ acao: 'mover_item_dia', linha: Number(linha), diaIndice: diaIndice }),
     })
       .then(r => r.json())
       .then(dados => {
-        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Salvar planejamento'; botao.disabled = false; return; }
+        if (dados.erro) { alert('Erro: ' + dados.erro); return; }
         carregarCalendario();
       })
-      .catch(erro => { alert('Erro: ' + erro.message); botao.textContent = 'Salvar planejamento'; botao.disabled = false; });
+      .catch(erro => alert('Erro ao mover: ' + erro.message));
   }
 
-  function salvarEdicaoCalendario(linha, botao) {
-    const legenda = document.getElementById('cal-legenda-' + linha).value.trim();
-    const midiaUrl = document.getElementById('cal-midia-' + linha).value.trim();
+  function excluirCartao(linha) {
+    if (!confirm('Excluir esse cartão do planejamento? Essa ação não pode ser desfeita.')) return;
+
+    fetch(WEBAPP_URL, {
+      method: 'POST',
+      body: JSON.stringify({ acao: 'excluir_item_fila', linha: linha }),
+    })
+      .then(r => r.json())
+      .then(dados => {
+        if (dados.erro) { alert('Erro: ' + dados.erro); return; }
+        document.getElementById('editor-cartao-calendario').innerHTML = '';
+        carregarCalendario();
+      })
+      .catch(erro => alert('Erro ao excluir: ' + erro.message));
+  }
+
+  function selecionarCartao(linha) {
+    const dadosSemana = window.calendarioAtual || {};
+    let itemAlvo = null;
+    Object.values(dadosSemana.itensPorDia || {}).forEach(lista => {
+      lista.forEach(it => { if (it.linha === linha) itemAlvo = it; });
+    });
+    if (!itemAlvo) return;
+
+    const container = document.getElementById('editor-cartao-calendario');
+    container.innerHTML = '<div class="item-fila" style="grid-template-columns:1fr;"><div>'
+      + '<label class="label">Segmento</label>'
+      + '<input type="text" id="cartao-segmento-' + linha + '" value="' + itemAlvo.segmento + '" style="width:100%; border:2px solid var(--preto); padding:8px 10px; margin-top:4px;">'
+      + '<label class="label" style="display:block; margin-top:10px;">Descrição do material</label>'
+      + '<textarea id="cartao-legenda-' + linha + '" style="width:100%; border:2px solid var(--preto); padding:10px; font-size:13px; min-height:70px; margin-top:4px;">' + itemAlvo.legenda + '</textarea>'
+      + '<label class="label" style="display:block; margin-top:10px;">Link da mídia</label>'
+      + '<input type="text" id="cartao-midia-' + linha + '" value="' + itemAlvo.midiaUrl + '" style="width:100%; border:2px solid var(--preto); padding:8px 10px; margin-top:4px;">'
+      + '<div class="acoes" style="margin-top:10px;">'
+      + '<button class="btn" onclick="document.getElementById(\'editor-cartao-calendario\').innerHTML=\'\'">Fechar</button>'
+      + '<button class="btn primario" onclick="salvarCartao(' + linha + ', this)">Salvar</button>'
+      + '</div></div></div>';
+  }
+
+  function salvarCartao(linha, botao) {
+    const segmento = document.getElementById('cartao-segmento-' + linha).value.trim();
+    const legenda = document.getElementById('cartao-legenda-' + linha).value.trim();
+    const midiaUrl = document.getElementById('cartao-midia-' + linha).value.trim();
 
     botao.textContent = 'Salvando...';
     botao.disabled = true;
 
     fetch(WEBAPP_URL, {
       method: 'POST',
-      body: JSON.stringify({ acao: 'editar_item_fila', linha: linha, legenda: legenda, midiaUrl: midiaUrl }),
+      body: JSON.stringify({ acao: 'editar_item_fila', linha: linha, legenda: legenda, midiaUrl: midiaUrl, segmento: segmento }),
     })
       .then(r => r.json())
       .then(dados => {
         if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Salvar'; botao.disabled = false; return; }
+        document.getElementById('editor-cartao-calendario').innerHTML = '';
         carregarCalendario();
       })
       .catch(erro => { alert('Erro: ' + erro.message); botao.textContent = 'Salvar'; botao.disabled = false; });
+  }
+
+  function mostrarFormNovoCartao_(indice) {
+    const dia = FORMULA_SEMANAL[indice];
+    const div = document.getElementById('form-novo-cartao-' + indice);
+    div.innerHTML = '<div style="margin-top:8px;">'
+      + '<input type="text" id="novo-cartao-segmento-' + indice + '" value="' + dia.segmento + '" placeholder="Segmento" style="width:100%; border:2px solid var(--preto); padding:6px 8px; font-size:11px; margin-bottom:6px;">'
+      + '<textarea id="novo-cartao-legenda-' + indice + '" placeholder="Descrição do material..." style="width:100%; border:2px solid var(--preto); padding:6px 8px; font-size:11px; min-height:50px; margin-bottom:6px;"></textarea>'
+      + '<button class="btn primario" style="width:100%; font-size:10px;" onclick="salvarNovoCartao_(' + indice + ', this)">Adicionar cartão</button>'
+      + '</div>';
+  }
+
+  function salvarNovoCartao_(indice, botao) {
+    const segmento = document.getElementById('novo-cartao-segmento-' + indice).value.trim();
+    const legenda = document.getElementById('novo-cartao-legenda-' + indice).value.trim();
+    if (!segmento) { alert('Dê um nome ao segmento antes de salvar.'); return; }
+
+    botao.textContent = 'Salvando...';
+    botao.disabled = true;
+
+    fetch(WEBAPP_URL, {
+      method: 'POST',
+      body: JSON.stringify({ acao: 'planejar_dia', diaIndice: indice, segmento: segmento, tipo: 'foto', legenda: legenda, midiaUrl: '' }),
+    })
+      .then(r => r.json())
+      .then(dados => {
+        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Adicionar cartão'; botao.disabled = false; return; }
+        carregarCalendario();
+      })
+      .catch(erro => { alert('Erro: ' + erro.message); botao.textContent = 'Adicionar cartão'; botao.disabled = false; });
   }
 
   function carregarFila() {
