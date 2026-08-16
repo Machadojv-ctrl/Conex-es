@@ -259,17 +259,9 @@
     <section class="secao" id="secao-calendario">
       <div class="topo-secao">
         <h1 class="headline">Calendário editorial</h1>
-        <span class="contexto">semana de 03 a 09 de agosto</span>
+        <span class="contexto" id="contexto-calendario">carregando...</span>
       </div>
-      <div class="semana">
-        <div class="dia preenchido"><div class="label">Seg</div><div class="segmento-nome">Agenda da Semana</div></div>
-        <div class="dia hoje"><div class="label">Ter</div><div class="segmento-nome">Olhar Crítico</div></div>
-        <div class="dia"><div class="label">Qua</div><div class="segmento-nome">Memória do Centro</div></div>
-        <div class="dia preenchido"><div class="label">Qui</div><div class="segmento-nome">Direto ao Ponto</div></div>
-        <div class="dia"><div class="label">Sex</div><div class="segmento-nome">Voz da Comunidade</div></div>
-        <div class="dia"><div class="label">Sáb</div><div class="segmento-nome">Rolê no Centro</div></div>
-        <div class="dia"><div class="label">Dom</div><div class="segmento-nome">Resumo & Enquete</div></div>
-      </div>
+      <div class="semana" id="grade-calendario"></div>
     </section>
 
     <section class="secao" id="secao-insights">
@@ -591,6 +583,57 @@
     const diferenca = Number(atual.seguidores) - Number(primeiro.seguidores);
     const sinal = diferenca > 0 ? '+' : '';
     resumo.textContent = atual.seguidores + ' seguidores agora (' + sinal + diferenca + ' desde ' + new Date(primeiro.capturadoEm).toLocaleDateString('pt-BR') + ')';
+  }
+
+  const FORMULA_SEMANAL = [
+    { rotulo: 'Seg', segmento: 'Agenda da Semana' },
+    { rotulo: 'Ter', segmento: 'Olhar Crítico' },
+    { rotulo: 'Qua', segmento: 'Memória do Centro' },
+    { rotulo: 'Qui', segmento: 'Direto ao Ponto' },
+    { rotulo: 'Sex', segmento: 'Voz da Comunidade' },
+    { rotulo: 'Sáb', segmento: 'Rolê no Centro' },
+    { rotulo: 'Dom', segmento: 'Resumo & Enquete' },
+  ];
+
+  function carregarCalendario() {
+    const contexto = document.getElementById('contexto-calendario');
+    const grade = document.getElementById('grade-calendario');
+    contexto.textContent = 'carregando...';
+
+    fetch(WEBAPP_URL + '?acao=listar_calendario', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(dados => {
+        const inicioSemana = new Date(dados.inicioSemana);
+        const fimSemana = new Date(inicioSemana);
+        fimSemana.setDate(inicioSemana.getDate() + 6);
+        contexto.textContent = 'semana de ' + inicioSemana.toLocaleDateString('pt-BR') + ' a ' + fimSemana.toLocaleDateString('pt-BR');
+
+        const hoje = new Date();
+        const indiceHoje = (hoje.getDay() + 6) % 7;
+
+        grade.innerHTML = FORMULA_SEMANAL.map((dia, indice) => {
+          const itens = (dados.itensPorDia && dados.itensPorDia[indice]) || [];
+          const classes = ['dia'];
+          if (indice === indiceHoje) classes.push('hoje');
+          if (itens.length) classes.push('preenchido');
+
+          let conteudoExtra = '';
+          if (itens.length) {
+            const statusTexto = itens.map(i => i.status).join(', ');
+            conteudoExtra = '<div style="font-size:11px; margin-top:6px; opacity:0.75;">' + itens.length + ' item(ns) — ' + statusTexto + '</div>';
+          }
+
+          return '<div class="' + classes.join(' ') + '">'
+            + '<div class="label">' + dia.rotulo + '</div>'
+            + '<div class="segmento-nome">' + dia.segmento + '</div>'
+            + conteudoExtra
+            + '</div>';
+        }).join('');
+      })
+      .catch(erro => {
+        contexto.textContent = 'erro ao carregar';
+        grade.innerHTML = '<p style="color:var(--vermelho); font-size:13px;">Erro: ' + erro.message + '</p>';
+      });
   }
 
   function carregarFila() {
@@ -1046,6 +1089,7 @@
       item.classList.add('ativo');
       document.getElementById('secao-' + item.dataset.secao).classList.add('ativa');
       if (item.dataset.secao === 'fila') carregarFila();
+      if (item.dataset.secao === 'calendario') carregarCalendario();
       if (item.dataset.secao === 'comentarios') carregarComentarios();
       if (item.dataset.secao === 'insights') carregarInsights();
       if (item.dataset.secao === 'contexto') carregarContexto();
