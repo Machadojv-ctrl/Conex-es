@@ -662,10 +662,14 @@
   function montarCartaoKanban_(item) {
     const classeAtrasado = item.atrasado ? ' atrasado' : '';
     const descricao = item.legenda ? item.legenda.substring(0, 60) : '(sem descrição)';
+    const tagStatus = item.status === 'rascunho'
+      ? '<span style="font-size:9px; color:var(--cinza-500); text-transform:uppercase;">rascunho</span>'
+      : '<span style="font-size:9px; color:var(--vermelho); text-transform:uppercase; font-weight:700;">pronto p/ aprovação</span>';
     return '<div class="kanban-card' + classeAtrasado + '" draggable="true" ondragstart="arrastarCartao(event, \'' + item.id + '\')" ondragover="permitirDrop(event)" onclick="selecionarCartao(\'' + item.id + '\')">'
       + '<button class="excluir" onclick="event.stopPropagation(); excluirCartao(\'' + item.id + '\')">×</button>'
       + '<span class="seg">' + item.segmento + '</span>'
       + '<div class="desc">' + descricao + '</div>'
+      + '<div style="margin-top:6px;">' + tagStatus + '</div>'
       + '</div>';
   }
 
@@ -741,6 +745,9 @@
     if (!itemAlvo) return;
 
     const container = document.getElementById('editor-cartao-calendario');
+    const botaoEnviar = itemAlvo.status === 'rascunho'
+      ? '<button class="btn" style="background:var(--vermelho); color:var(--branco); border-color:var(--vermelho);" onclick="enviarCartaoParaAprovacao(\'' + id + '\', this)">Enviar para aprovação</button>'
+      : '';
     container.innerHTML = '<div class="item-fila" style="grid-template-columns:1fr;"><div>'
       + '<label class="label">Segmento</label>'
       + '<input type="text" id="cartao-segmento-' + id + '" value="' + itemAlvo.segmento + '" style="width:100%; border:2px solid var(--preto); padding:8px 10px; margin-top:4px;">'
@@ -751,7 +758,25 @@
       + '<div class="acoes" style="margin-top:10px;">'
       + '<button class="btn" onclick="document.getElementById(\'editor-cartao-calendario\').innerHTML=\'\'">Fechar</button>'
       + '<button class="btn primario" onclick="salvarCartao(\'' + id + '\', this)">Salvar</button>'
+      + botaoEnviar
       + '</div></div></div>';
+  }
+
+  function enviarCartaoParaAprovacao(id, botao) {
+    botao.textContent = 'Enviando...';
+    botao.disabled = true;
+
+    fetch(WEBAPP_URL, {
+      method: 'POST',
+      body: JSON.stringify({ acao: 'editar_item_fila', id: id, novoStatus: 'pendente' }),
+    })
+      .then(r => r.json())
+      .then(dados => {
+        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Enviar para aprovação'; botao.disabled = false; return; }
+        document.getElementById('editor-cartao-calendario').innerHTML = '';
+        carregarCalendario();
+      })
+      .catch(erro => { alert('Erro: ' + erro.message); botao.textContent = 'Enviar para aprovação'; botao.disabled = false; });
   }
 
   function salvarCartao(id, botao) {
