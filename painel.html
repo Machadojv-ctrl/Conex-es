@@ -614,8 +614,6 @@
 
   function carregarCalendario() {
     const contexto = document.getElementById('contexto-calendario');
-    const avisos = document.getElementById('kanban-avisos');
-    const board = document.getElementById('kanban-board');
     contexto.textContent = 'carregando...';
 
     fetch(WEBAPP_URL + '?acao=listar_calendario', { cache: 'no-store' })
@@ -626,75 +624,104 @@
         const fimSemana = new Date(inicioSemana);
         fimSemana.setDate(inicioSemana.getDate() + 6);
         contexto.textContent = 'semana de ' + inicioSemana.toLocaleDateString('pt-BR') + ' a ' + fimSemana.toLocaleDateString('pt-BR');
-
-        const atrasados = dados.atrasados || [];
-        let htmlAvisos = '<div class="pill-aviso">' + (dados.hojeCount || 0) + ' post(s) pra hoje</div>';
-        if (atrasados.length) htmlAvisos += '<div class="pill-aviso atrasado">⚠ ' + atrasados.length + ' atrasado(s)</div>';
-        avisos.innerHTML = htmlAvisos;
-
-        const hoje = new Date();
-        const indiceHoje = (hoje.getDay() + 6) % 7;
-
-        board.innerHTML = FORMULA_SEMANAL.map((dia, indice) => {
-          const itens = (dados.itensPorDia && dados.itensPorDia[indice]) || [];
-          const classeHoje = indice === indiceHoje ? ' hoje' : '';
-          const cartoes = itens.map(item => montarCartaoKanban_(item)).join('');
-
-          return '<div class="kanban-coluna' + classeHoje + '" ondragover="permitirDrop(event)" ondrop="soltarCartao(event, ' + indice + ')">'
-            + '<div class="kanban-coluna-topo">' + dia.rotulo + '</div>'
-            + cartoes
-            + '<button class="kanban-add" onclick="mostrarFormNovoCartao_(' + indice + ')">+ Adicionar</button>'
-            + '<div id="form-novo-cartao-' + indice + '"></div>'
-            + '</div>';
-        }).join('');
+        renderizarBoardKanban_();
       })
       .catch(erro => {
         contexto.textContent = 'erro ao carregar';
-        board.innerHTML = '<p style="color:var(--vermelho); font-size:13px;">Erro: ' + erro.message + '</p>';
+        document.getElementById('kanban-board').innerHTML = '<p style="color:var(--vermelho); font-size:13px;">Erro: ' + erro.message + '</p>';
       });
+  }
+
+  function renderizarBoardKanban_() {
+    const dados = window.calendarioAtual || {};
+    const avisos = document.getElementById('kanban-avisos');
+    const board = document.getElementById('kanban-board');
+
+    const atrasados = dados.atrasados || [];
+    let htmlAvisos = '<div class="pill-aviso">' + (dados.hojeCount || 0) + ' post(s) pra hoje</div>';
+    if (atrasados.length) htmlAvisos += '<div class="pill-aviso atrasado">⚠ ' + atrasados.length + ' atrasado(s)</div>';
+    avisos.innerHTML = htmlAvisos;
+
+    const hoje = new Date();
+    const indiceHoje = (hoje.getDay() + 6) % 7;
+
+    board.innerHTML = FORMULA_SEMANAL.map((dia, indice) => {
+      const itens = (dados.itensPorDia && dados.itensPorDia[indice]) || [];
+      const classeHoje = indice === indiceHoje ? ' hoje' : '';
+      const cartoes = itens.map(item => montarCartaoKanban_(item)).join('');
+
+      return '<div class="kanban-coluna' + classeHoje + '" data-dia="' + indice + '" ondragover="permitirDrop(event)" ondrop="soltarCartao(event, ' + indice + ')">'
+        + '<div class="kanban-coluna-topo">' + dia.rotulo + '</div>'
+        + '<div class="kanban-cartoes" style="min-height:24px;">' + cartoes + '</div>'
+        + '<button class="kanban-add" onclick="mostrarFormNovoCartao_(' + indice + ')">+ Adicionar</button>'
+        + '<div id="form-novo-cartao-' + indice + '"></div>'
+        + '</div>';
+    }).join('');
   }
 
   function montarCartaoKanban_(item) {
     const classeAtrasado = item.atrasado ? ' atrasado' : '';
     const descricao = item.legenda ? item.legenda.substring(0, 60) : '(sem descrição)';
-    return '<div class="kanban-card' + classeAtrasado + '" draggable="true" ondragstart="arrastarCartao(event, ' + item.linha + ')" onclick="selecionarCartao(' + item.linha + ')">'
-      + '<button class="excluir" onclick="event.stopPropagation(); excluirCartao(' + item.linha + ')">×</button>'
+    return '<div class="kanban-card' + classeAtrasado + '" draggable="true" ondragstart="arrastarCartao(event, \'' + item.id + '\')" ondragover="permitirDrop(event)" onclick="selecionarCartao(\'' + item.id + '\')">'
+      + '<button class="excluir" onclick="event.stopPropagation(); excluirCartao(\'' + item.id + '\')">×</button>'
       + '<span class="seg">' + item.segmento + '</span>'
       + '<div class="desc">' + descricao + '</div>'
       + '</div>';
   }
 
-  function arrastarCartao(evento, linha) {
-    evento.dataTransfer.setData('text/plain', linha);
+  function arrastarCartao(evento, id) {
+    evento.dataTransfer.setData('text/plain', id);
   }
 
   function permitirDrop(evento) {
     evento.preventDefault();
+    evento.stopPropagation();
   }
 
   function soltarCartao(evento, diaIndice) {
     evento.preventDefault();
-    const linha = evento.dataTransfer.getData('text/plain');
-    if (!linha) return;
+    evento.stopPropagation();
+    const id = evento.dataTransfer.getData('text/plain');
+    if (!id) return;
+
+    // Move na tela imediatamente — não espera o servidor pra parecer instantâneo.
+    moverCartaoNaTela_(id, diaIndice);
 
     fetch(WEBAPP_URL, {
       method: 'POST',
-      body: JSON.stringify({ acao: 'mover_item_dia', linha: Number(linha), diaIndice: diaIndice }),
+      body: JSON.stringify({ acao: 'mover_item_dia', id: id, diaIndice: diaIndice }),
     })
       .then(r => r.json())
       .then(dados => {
-        if (dados.erro) { alert('Erro: ' + dados.erro); return; }
-        carregarCalendario();
+        if (dados.erro) { alert('Erro ao mover: ' + dados.erro); carregarCalendario(); }
       })
-      .catch(erro => alert('Erro ao mover: ' + erro.message));
+      .catch(erro => { alert('Erro ao mover: ' + erro.message); carregarCalendario(); });
   }
 
-  function excluirCartao(linha) {
+  function moverCartaoNaTela_(id, novoDiaIndice) {
+    const dados = window.calendarioAtual;
+    if (!dados || !dados.itensPorDia) return;
+
+    let itemMovido = null;
+    Object.keys(dados.itensPorDia).forEach(chave => {
+      dados.itensPorDia[chave] = dados.itensPorDia[chave].filter(it => {
+        if (it.id === id) { itemMovido = it; return false; }
+        return true;
+      });
+    });
+    if (!itemMovido) return;
+
+    if (!dados.itensPorDia[novoDiaIndice]) dados.itensPorDia[novoDiaIndice] = [];
+    dados.itensPorDia[novoDiaIndice].push(itemMovido);
+    renderizarBoardKanban_();
+  }
+
+  function excluirCartao(id) {
     if (!confirm('Excluir esse cartão do planejamento? Essa ação não pode ser desfeita.')) return;
 
     fetch(WEBAPP_URL, {
       method: 'POST',
-      body: JSON.stringify({ acao: 'excluir_item_fila', linha: linha }),
+      body: JSON.stringify({ acao: 'excluir_item_fila', id: id }),
     })
       .then(r => r.json())
       .then(dados => {
@@ -705,39 +732,39 @@
       .catch(erro => alert('Erro ao excluir: ' + erro.message));
   }
 
-  function selecionarCartao(linha) {
+  function selecionarCartao(id) {
     const dadosSemana = window.calendarioAtual || {};
     let itemAlvo = null;
     Object.values(dadosSemana.itensPorDia || {}).forEach(lista => {
-      lista.forEach(it => { if (it.linha === linha) itemAlvo = it; });
+      lista.forEach(it => { if (it.id === id) itemAlvo = it; });
     });
     if (!itemAlvo) return;
 
     const container = document.getElementById('editor-cartao-calendario');
     container.innerHTML = '<div class="item-fila" style="grid-template-columns:1fr;"><div>'
       + '<label class="label">Segmento</label>'
-      + '<input type="text" id="cartao-segmento-' + linha + '" value="' + itemAlvo.segmento + '" style="width:100%; border:2px solid var(--preto); padding:8px 10px; margin-top:4px;">'
+      + '<input type="text" id="cartao-segmento-' + id + '" value="' + itemAlvo.segmento + '" style="width:100%; border:2px solid var(--preto); padding:8px 10px; margin-top:4px;">'
       + '<label class="label" style="display:block; margin-top:10px;">Descrição do material</label>'
-      + '<textarea id="cartao-legenda-' + linha + '" style="width:100%; border:2px solid var(--preto); padding:10px; font-size:13px; min-height:70px; margin-top:4px;">' + itemAlvo.legenda + '</textarea>'
+      + '<textarea id="cartao-legenda-' + id + '" style="width:100%; border:2px solid var(--preto); padding:10px; font-size:13px; min-height:70px; margin-top:4px;">' + itemAlvo.legenda + '</textarea>'
       + '<label class="label" style="display:block; margin-top:10px;">Link da mídia</label>'
-      + '<input type="text" id="cartao-midia-' + linha + '" value="' + itemAlvo.midiaUrl + '" style="width:100%; border:2px solid var(--preto); padding:8px 10px; margin-top:4px;">'
+      + '<input type="text" id="cartao-midia-' + id + '" value="' + itemAlvo.midiaUrl + '" style="width:100%; border:2px solid var(--preto); padding:8px 10px; margin-top:4px;">'
       + '<div class="acoes" style="margin-top:10px;">'
       + '<button class="btn" onclick="document.getElementById(\'editor-cartao-calendario\').innerHTML=\'\'">Fechar</button>'
-      + '<button class="btn primario" onclick="salvarCartao(' + linha + ', this)">Salvar</button>'
+      + '<button class="btn primario" onclick="salvarCartao(\'' + id + '\', this)">Salvar</button>'
       + '</div></div></div>';
   }
 
-  function salvarCartao(linha, botao) {
-    const segmento = document.getElementById('cartao-segmento-' + linha).value.trim();
-    const legenda = document.getElementById('cartao-legenda-' + linha).value.trim();
-    const midiaUrl = document.getElementById('cartao-midia-' + linha).value.trim();
+  function salvarCartao(id, botao) {
+    const segmento = document.getElementById('cartao-segmento-' + id).value.trim();
+    const legenda = document.getElementById('cartao-legenda-' + id).value.trim();
+    const midiaUrl = document.getElementById('cartao-midia-' + id).value.trim();
 
     botao.textContent = 'Salvando...';
     botao.disabled = true;
 
     fetch(WEBAPP_URL, {
       method: 'POST',
-      body: JSON.stringify({ acao: 'editar_item_fila', linha: linha, legenda: legenda, midiaUrl: midiaUrl, segmento: segmento }),
+      body: JSON.stringify({ acao: 'editar_item_fila', id: id, legenda: legenda, midiaUrl: midiaUrl, segmento: segmento }),
     })
       .then(r => r.json())
       .then(dados => {
@@ -812,7 +839,7 @@
     const itens = window.itensFilaAtual || [];
 
     lista.innerHTML = itens.map(item => {
-      if (window.linhaEmEdicao === item.linha) {
+      if (window.idEmEdicao === item.id) {
         return montarFormularioEdicao_(item);
       }
 
@@ -821,14 +848,14 @@
         ? '<span class="tag-status aprovado">Agendado — ' + (item.agendadoPara ? new Date(item.agendadoPara).toLocaleString('pt-BR') : '') + '</span>'
         : '<span class="tag-status pendente">Pendente</span>';
       const acaoPrincipal = item.status === 'pendente'
-        ? '<button class="btn primario" onclick="aprovarItem(' + item.linha + ', this)">Aprovar e publicar</button>'
+        ? '<button class="btn primario" onclick="aprovarItem(\'' + item.id + '\', this)">Aprovar e publicar</button>'
         : '<span style="font-size:12px; color:var(--cinza-500);">publica sozinho na hora</span>';
 
       return '<div class="item-fila">'
         + '<div class="thumb">[' + item.tipo + ']</div>'
         + '<div><span class="tag-segmento">' + item.segmento + '</span>' + tagStatus
         + '<div class="titulo-item">' + tituloTexto + '</div></div>'
-        + '<div class="acoes"><button class="btn" onclick="editarItemFilaUI(' + item.linha + ')">Editar</button>' + acaoPrincipal + '</div>'
+        + '<div class="acoes"><button class="btn" onclick="editarItemFilaUI(\'' + item.id + '\')">Editar</button>' + acaoPrincipal + '</div>'
         + '</div>';
     }).join('');
   }
@@ -836,33 +863,33 @@
   function montarFormularioEdicao_(item) {
     const campoData = item.status === 'agendado'
       ? '<label class="label" style="margin-top:10px; display:block;">Data e hora do agendamento</label>'
-        + '<input type="datetime-local" id="edicao-data-' + item.linha + '" value="' + (item.agendadoPara ? item.agendadoPara.slice(0, 16) : '') + '">'
+        + '<input type="datetime-local" id="edicao-data-' + item.id + '" value="' + (item.agendadoPara ? item.agendadoPara.slice(0, 16) : '') + '">'
       : '';
 
     return '<div class="item-fila" style="grid-template-columns:1fr;">'
       + '<div>'
       + '<span class="tag-segmento">' + item.segmento + '</span>'
-      + '<textarea id="edicao-legenda-' + item.linha + '" style="width:100%; border:1px solid var(--cinza-300); padding:10px; font-size:13px; min-height:70px; margin-top:8px;">' + (item.legenda || '') + '</textarea>'
+      + '<textarea id="edicao-legenda-' + item.id + '" style="width:100%; border:1px solid var(--cinza-300); padding:10px; font-size:13px; min-height:70px; margin-top:8px;">' + (item.legenda || '') + '</textarea>'
       + campoData
       + '<div class="acoes" style="margin-top:10px;">'
       + '<button class="btn" onclick="cancelarEdicaoFila()">Cancelar</button>'
-      + '<button class="btn primario" onclick="salvarEdicaoFila(' + item.linha + ', this)">Salvar</button>'
+      + '<button class="btn primario" onclick="salvarEdicaoFila(\'' + item.id + '\', this)">Salvar</button>'
       + '</div></div></div>';
   }
 
-  function editarItemFilaUI(linha) {
-    window.linhaEmEdicao = linha;
+  function editarItemFilaUI(id) {
+    window.idEmEdicao = id;
     renderizarListaFila_();
   }
 
   function cancelarEdicaoFila() {
-    window.linhaEmEdicao = null;
+    window.idEmEdicao = null;
     renderizarListaFila_();
   }
 
-  function salvarEdicaoFila(linha, botao) {
-    const legenda = document.getElementById('edicao-legenda-' + linha).value.trim();
-    const campoData = document.getElementById('edicao-data-' + linha);
+  function salvarEdicaoFila(id, botao) {
+    const legenda = document.getElementById('edicao-legenda-' + id).value.trim();
+    const campoData = document.getElementById('edicao-data-' + id);
     const dataAgendamento = campoData ? campoData.value : '';
 
     botao.textContent = 'Salvando...';
@@ -870,12 +897,12 @@
 
     fetch(WEBAPP_URL, {
       method: 'POST',
-      body: JSON.stringify({ acao: 'editar_item_fila', linha: linha, legenda: legenda, dataAgendamento: dataAgendamento }),
+      body: JSON.stringify({ acao: 'editar_item_fila', id: id, legenda: legenda, dataAgendamento: dataAgendamento }),
     })
       .then(r => r.json())
       .then(dados => {
         if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Salvar'; botao.disabled = false; return; }
-        window.linhaEmEdicao = null;
+        window.idEmEdicao = null;
         carregarFila();
       })
       .catch(erro => {
@@ -885,13 +912,13 @@
       });
   }
 
-  function aprovarItem(linha, botao) {
+  function aprovarItem(id, botao) {
     botao.textContent = 'Publicando...';
     botao.disabled = true;
 
     fetch(WEBAPP_URL, {
       method: 'POST',
-      body: JSON.stringify({ acao: 'aprovar_item', linha: linha }),
+      body: JSON.stringify({ acao: 'aprovar_item', id: id }),
     })
       .then(r => r.json())
       .then(dados => {
