@@ -616,7 +616,7 @@
     const contexto = document.getElementById('contexto-calendario');
     contexto.textContent = 'carregando...';
 
-    fetch(WEBAPP_URL + '?acao=listar_calendario', { cache: 'no-store' })
+    fetch(WEBAPP_URL + '?acao=listar_planejamento', { cache: 'no-store' })
       .then(r => r.json())
       .then(dados => {
         window.calendarioAtual = dados;
@@ -638,8 +638,8 @@
     const board = document.getElementById('kanban-board');
 
     const atrasados = dados.atrasados || [];
-    let htmlAvisos = '<div class="pill-aviso">' + (dados.hojeCount || 0) + ' post(s) pra hoje</div>';
-    if (atrasados.length) htmlAvisos += '<div class="pill-aviso atrasado">⚠ ' + atrasados.length + ' atrasado(s)</div>';
+    let htmlAvisos = '<div class="pill-aviso">' + (dados.hojeCount || 0) + ' post(s) real(is) pra hoje</div>';
+    if (atrasados.length) htmlAvisos += '<div class="pill-aviso atrasado">⚠ ' + atrasados.length + ' post(s) real(is) atrasado(s)</div>';
     avisos.innerHTML = htmlAvisos;
 
     const hoje = new Date();
@@ -650,26 +650,21 @@
       const classeHoje = indice === indiceHoje ? ' hoje' : '';
       const cartoes = itens.map(item => montarCartaoKanban_(item)).join('');
 
-      return '<div class="kanban-coluna' + classeHoje + '" data-dia="' + indice + '" ondragover="permitirDrop(event)" ondrop="soltarCartao(event, ' + indice + ')">'
+      return '<div class="kanban-coluna' + classeHoje + '" ondragover="permitirDrop(event)" ondrop="soltarCartao(event, ' + indice + ')">'
         + '<div class="kanban-coluna-topo">' + dia.rotulo + '</div>'
         + '<div class="kanban-cartoes" style="min-height:24px;">' + cartoes + '</div>'
-        + '<button class="kanban-add" onclick="mostrarFormNovoCartao_(' + indice + ')">+ Adicionar</button>'
+        + '<button class="kanban-add" onclick="mostrarFormNovoCartao_(' + indice + ')">+ Adicionar ideia</button>'
         + '<div id="form-novo-cartao-' + indice + '"></div>'
         + '</div>';
     }).join('');
   }
 
   function montarCartaoKanban_(item) {
-    const classeAtrasado = item.atrasado ? ' atrasado' : '';
-    const descricao = item.legenda ? item.legenda.substring(0, 60) : '(sem descrição)';
-    const tagStatus = item.status === 'rascunho'
-      ? '<span style="font-size:9px; color:var(--cinza-500); text-transform:uppercase;">rascunho</span>'
-      : '<span style="font-size:9px; color:var(--vermelho); text-transform:uppercase; font-weight:700;">pronto p/ aprovação</span>';
-    return '<div class="kanban-card' + classeAtrasado + '" draggable="true" ondragstart="arrastarCartao(event, \'' + item.id + '\')" ondragover="permitirDrop(event)" onclick="selecionarCartao(\'' + item.id + '\')">'
+    const descricao = item.descricao ? item.descricao.substring(0, 70) : '(sem descrição ainda)';
+    return '<div class="kanban-card" draggable="true" ondragstart="arrastarCartao(event, \'' + item.id + '\')" ondragover="permitirDrop(event)" onclick="selecionarCartao(\'' + item.id + '\')">'
       + '<button class="excluir" onclick="event.stopPropagation(); excluirCartao(\'' + item.id + '\')">×</button>'
       + '<span class="seg">' + item.segmento + '</span>'
       + '<div class="desc">' + descricao + '</div>'
-      + '<div style="margin-top:6px;">' + tagStatus + '</div>'
       + '</div>';
   }
 
@@ -688,12 +683,11 @@
     const id = evento.dataTransfer.getData('text/plain');
     if (!id) return;
 
-    // Move na tela imediatamente — não espera o servidor pra parecer instantâneo.
     moverCartaoNaTela_(id, diaIndice);
 
     fetch(WEBAPP_URL, {
       method: 'POST',
-      body: JSON.stringify({ acao: 'mover_item_dia', id: id, diaIndice: diaIndice }),
+      body: JSON.stringify({ acao: 'mover_cartao_planejamento', id: id, diaIndice: diaIndice }),
     })
       .then(r => r.json())
       .then(dados => {
@@ -721,11 +715,11 @@
   }
 
   function excluirCartao(id) {
-    if (!confirm('Excluir esse cartão do planejamento? Essa ação não pode ser desfeita.')) return;
+    if (!confirm('Excluir essa ideia do planejamento?')) return;
 
     fetch(WEBAPP_URL, {
       method: 'POST',
-      body: JSON.stringify({ acao: 'excluir_item_fila', id: id }),
+      body: JSON.stringify({ acao: 'excluir_cartao_planejamento', id: id }),
     })
       .then(r => r.json())
       .then(dados => {
@@ -745,51 +739,28 @@
     if (!itemAlvo) return;
 
     const container = document.getElementById('editor-cartao-calendario');
-    const botaoEnviar = itemAlvo.status === 'rascunho'
-      ? '<button class="btn" style="background:var(--vermelho); color:var(--branco); border-color:var(--vermelho);" onclick="enviarCartaoParaAprovacao(\'' + id + '\', this)">Enviar para aprovação</button>'
-      : '';
     container.innerHTML = '<div class="item-fila" style="grid-template-columns:1fr;"><div>'
       + '<label class="label">Segmento</label>'
       + '<input type="text" id="cartao-segmento-' + id + '" value="' + itemAlvo.segmento + '" style="width:100%; border:2px solid var(--preto); padding:8px 10px; margin-top:4px;">'
-      + '<label class="label" style="display:block; margin-top:10px;">Descrição do material</label>'
-      + '<textarea id="cartao-legenda-' + id + '" style="width:100%; border:2px solid var(--preto); padding:10px; font-size:13px; min-height:70px; margin-top:4px;">' + itemAlvo.legenda + '</textarea>'
-      + '<label class="label" style="display:block; margin-top:10px;">Link da mídia</label>'
-      + '<input type="text" id="cartao-midia-' + id + '" value="' + itemAlvo.midiaUrl + '" style="width:100%; border:2px solid var(--preto); padding:8px 10px; margin-top:4px;">'
+      + '<label class="label" style="display:block; margin-top:10px;">Descrição da ideia</label>'
+      + '<textarea id="cartao-descricao-' + id + '" style="width:100%; border:2px solid var(--preto); padding:10px; font-size:13px; min-height:70px; margin-top:4px;">' + itemAlvo.descricao + '</textarea>'
       + '<div class="acoes" style="margin-top:10px;">'
       + '<button class="btn" onclick="document.getElementById(\'editor-cartao-calendario\').innerHTML=\'\'">Fechar</button>'
       + '<button class="btn primario" onclick="salvarCartao(\'' + id + '\', this)">Salvar</button>'
-      + botaoEnviar
+      + '<button class="btn" style="background:var(--vermelho); color:var(--branco); border-color:var(--vermelho);" onclick="irParaCriarPost_(\'' + itemAlvo.segmento + '\', document.getElementById(\'cartao-descricao-' + id + '\').value)">Criar post a partir daqui</button>'
       + '</div></div></div>';
-  }
-
-  function enviarCartaoParaAprovacao(id, botao) {
-    botao.textContent = 'Enviando...';
-    botao.disabled = true;
-
-    fetch(WEBAPP_URL, {
-      method: 'POST',
-      body: JSON.stringify({ acao: 'editar_item_fila', id: id, novoStatus: 'pendente' }),
-    })
-      .then(r => r.json())
-      .then(dados => {
-        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Enviar para aprovação'; botao.disabled = false; return; }
-        document.getElementById('editor-cartao-calendario').innerHTML = '';
-        carregarCalendario();
-      })
-      .catch(erro => { alert('Erro: ' + erro.message); botao.textContent = 'Enviar para aprovação'; botao.disabled = false; });
   }
 
   function salvarCartao(id, botao) {
     const segmento = document.getElementById('cartao-segmento-' + id).value.trim();
-    const legenda = document.getElementById('cartao-legenda-' + id).value.trim();
-    const midiaUrl = document.getElementById('cartao-midia-' + id).value.trim();
+    const descricao = document.getElementById('cartao-descricao-' + id).value.trim();
 
     botao.textContent = 'Salvando...';
     botao.disabled = true;
 
     fetch(WEBAPP_URL, {
       method: 'POST',
-      body: JSON.stringify({ acao: 'editar_item_fila', id: id, legenda: legenda, midiaUrl: midiaUrl, segmento: segmento }),
+      body: JSON.stringify({ acao: 'editar_cartao_planejamento', id: id, segmento: segmento, descricao: descricao }),
     })
       .then(r => r.json())
       .then(dados => {
@@ -800,19 +771,34 @@
       .catch(erro => { alert('Erro: ' + erro.message); botao.textContent = 'Salvar'; botao.disabled = false; });
   }
 
+  function irParaCriarPost_(segmento, descricao) {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('ativo'));
+    document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+    document.querySelector('.nav-item[data-secao="criar"]').classList.add('ativo');
+    document.getElementById('secao-criar').classList.add('ativa');
+
+    const selectSegmento = document.getElementById('segmento-post');
+    for (let i = 0; i < selectSegmento.options.length; i++) {
+      if (selectSegmento.options[i].text === segmento) { selectSegmento.selectedIndex = i; break; }
+    }
+
+    document.getElementById('legenda-post').value = descricao || '';
+    document.getElementById('descricao-ia').value = descricao || '';
+  }
+
   function mostrarFormNovoCartao_(indice) {
     const dia = FORMULA_SEMANAL[indice];
     const div = document.getElementById('form-novo-cartao-' + indice);
     div.innerHTML = '<div style="margin-top:8px;">'
       + '<input type="text" id="novo-cartao-segmento-' + indice + '" value="' + dia.segmento + '" placeholder="Segmento" style="width:100%; border:2px solid var(--preto); padding:6px 8px; font-size:11px; margin-bottom:6px;">'
-      + '<textarea id="novo-cartao-legenda-' + indice + '" placeholder="Descrição do material..." style="width:100%; border:2px solid var(--preto); padding:6px 8px; font-size:11px; min-height:50px; margin-bottom:6px;"></textarea>'
-      + '<button class="btn primario" style="width:100%; font-size:10px;" onclick="salvarNovoCartao_(' + indice + ', this)">Adicionar cartão</button>'
+      + '<textarea id="novo-cartao-descricao-' + indice + '" placeholder="Descrição da ideia..." style="width:100%; border:2px solid var(--preto); padding:6px 8px; font-size:11px; min-height:50px; margin-bottom:6px;"></textarea>'
+      + '<button class="btn primario" style="width:100%; font-size:10px;" onclick="salvarNovoCartao_(' + indice + ', this)">Adicionar ideia</button>'
       + '</div>';
   }
 
   function salvarNovoCartao_(indice, botao) {
     const segmento = document.getElementById('novo-cartao-segmento-' + indice).value.trim();
-    const legenda = document.getElementById('novo-cartao-legenda-' + indice).value.trim();
+    const descricao = document.getElementById('novo-cartao-descricao-' + indice).value.trim();
     if (!segmento) { alert('Dê um nome ao segmento antes de salvar.'); return; }
 
     botao.textContent = 'Salvando...';
@@ -820,15 +806,16 @@
 
     fetch(WEBAPP_URL, {
       method: 'POST',
-      body: JSON.stringify({ acao: 'planejar_dia', diaIndice: indice, segmento: segmento, tipo: 'foto', legenda: legenda, midiaUrl: '' }),
+      body: JSON.stringify({ acao: 'criar_cartao_planejamento', diaIndice: indice, segmento: segmento, descricao: descricao }),
     })
       .then(r => r.json())
       .then(dados => {
-        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Adicionar cartão'; botao.disabled = false; return; }
+        if (dados.erro) { alert('Erro: ' + dados.erro); botao.textContent = 'Adicionar ideia'; botao.disabled = false; return; }
         carregarCalendario();
       })
-      .catch(erro => { alert('Erro: ' + erro.message); botao.textContent = 'Adicionar cartão'; botao.disabled = false; });
+      .catch(erro => { alert('Erro: ' + erro.message); botao.textContent = 'Adicionar ideia'; botao.disabled = false; });
   }
+
 
   function carregarFila() {
     const lista = document.getElementById('lista-fila');
